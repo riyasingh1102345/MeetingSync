@@ -88,7 +88,8 @@ export default function MeetingDetail() {
         contextStr += meeting?.transcriptText || 'No transcript available for this meeting.';
       }
 
-      const res = await fetch('http://localhost:3001/api/chat', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text, context: contextStr })
