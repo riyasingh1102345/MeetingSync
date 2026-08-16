@@ -115,7 +115,7 @@ app.post('/api/process', async (req, res) => {
 
     // ── Step 2: Ask Gemini to generate summary, action items, AND chapters ──
     console.log('🤖 Generating AI summary & chapters...');
-    let aiData = { summary: 'Summary not available.', actionItems: [], chapters: [], host: 'Unknown', attendeeCount: 1 };
+    let aiData = { summary: 'Summary not available.', actionItems: [], chapters: [], host: 'Unknown', attendeeCount: 1, speakerNames: {} };
 
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
@@ -130,15 +130,17 @@ RULES:
 - Number of chapters should scale with video length: ~2-3 chapters for <2 min videos, ~4-6 for 2-10 min, ~7-10 for longer.
 - "summary": a 2-3 sentence overall meeting summary.
 - "actionItems": 3-5 specific action items mentioned (tasks, follow-ups, decisions). If none, return [].
-- "host": Speaker who led the discussion or spoke most. Use their label (e.g. "Speaker A").
+- "host": The name of the person who led the discussion or spoke most. If they introduced themselves by name, use their real name. Otherwise use their speaker label (e.g. "Speaker A").
 - "attendeeCount": total number of unique speakers.
+- "speakerNames": A mapping of speaker labels to real names. Look carefully in the transcript for any self-introductions like "Hi, I'm John", "This is Sarah", "My name is...", etc. Map the speaker label to the real name. Example: { "Speaker A": "Riya Singh", "Speaker B": "Speaker B" }. If a speaker never says their name, keep their label as-is.
 
 Respond ONLY with valid JSON in this exact format:
 {
   "summary": "...",
   "actionItems": ["...", "..."],
-  "host": "Speaker A",
+  "host": "Speaker A or their real name",
   "attendeeCount": 2,
+  "speakerNames": { "Speaker A": "Real Name or Speaker A", "Speaker B": "Real Name or Speaker B" },
   "chapters": [
     { "time": "00:00", "title": "Opening & Introductions", "bullets": ["Point 1", "Point 2"] },
     { "time": "01:15", "title": "Main Discussion", "bullets": ["Point 1", "Point 2", "Point 3"] }
@@ -173,6 +175,7 @@ ${timestampedText}
       actionItems: aiData.actionItems || [],
       host: aiData.host || 'Unknown',
       attendeeCount: actualAttendeeCount,
+      speakerNames: aiData.speakerNames || {},
     });
 
   } catch (err) {

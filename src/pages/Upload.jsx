@@ -122,6 +122,8 @@ export default function Upload() {
         chapters: aiData.chapters || [],
         summary: aiData.summary,
         actionItems: aiData.actionItems,
+        attendeeCount: aiData.attendeeCount || 1,
+        speakerNames: aiData.speakerNames || {},
         createdAt: serverTimestamp(),
       });
 
