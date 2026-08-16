@@ -41,11 +41,11 @@ function MeetingInsightCard({ meeting }) {
   const displayDate = date || (meeting.createdAt ? new Date(meeting.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A');
   const displayTime = time || '';
 
-  // Generate mock attendee list based on count
-  const attendeeList = Array.from({ length: Math.min(attendees, 8) }, (_, i) => {
-    const names = ['Michael Chen', 'Emma Williams', 'Priya Sharma', 'David Kim', 'Alex Rodriguez', 'Lisa Brown', 'Tom Wilson', 'Nina Patel'];
-    const roles = ['Engineering Lead', 'Senior Developer', 'UX Designer', 'QA Lead', 'Marketing Manager', 'Data Analyst', 'Product Owner', 'DevOps Engineer'];
-    return { name: names[i] || `Attendee ${i + 1}`, role: roles[i] || 'Member' };
+  const actualCount = meeting.attendeeCount || attendees || 1;
+  const attendeeList = Array.from({ length: Math.min(actualCount, 8) }, (_, i) => {
+    // Generate Speaker A, Speaker B, etc.
+    const letter = String.fromCharCode(65 + i);
+    return { name: `Speaker ${letter}`, role: 'Meeting Participant' };
   });
 
   // Parse summary / action items
@@ -133,7 +133,7 @@ function MeetingInsightCard({ meeting }) {
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#64748B' }}>Total Attendees</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#0F172A' }}>{attendees || attendeeList.length}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#0F172A' }}>{actualCount}</div>
             </div>
           </div>
         </div>
@@ -145,7 +145,7 @@ function MeetingInsightCard({ meeting }) {
           {attendeeList.length > 0 && (
             <div>
               <div style={{ fontSize: 12, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
-                Participants ({attendees || attendeeList.length})
+                Participants ({actualCount})
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {attendeeList.map((a, i) => (
