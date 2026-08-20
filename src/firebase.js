@@ -24,3 +24,4 @@ export const storage = getStorage(app);
 
 // Auth Providers
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
