@@ -231,12 +231,51 @@ export default function LiveMeeting() {
       api.addEventListener('participantJoined', updateParticipants);
       api.addEventListener('participantLeft', updateParticipants);
       api.addEventListener('displayNameChange', updateParticipants);
-      api.addEventListener('readyToClose', () => {
-        // If recording is active when user hangs up, stop recording (which triggers upload)
+      api.addEventListener('readyToClose', async () => {
+        // If recording is active when user hangs up, stop recording (which triggers upload and save)
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
           stopRecording();
         } else if (!processStep) {
-          // If no recording was active, just go back to history
+          // If no recording was active, save basic meeting data and go to history
+          try {
+            const endTime = new Date();
+            const durationMs = endTime - meetingStartTime;
+            const durationMins = Math.round(durationMs / 60000);
+            const durationStr = durationMins < 1 ? 'Less than 1 min' : `${durationMins} min`;
+
+            const allParticipantsObj = { host: displayName, ...allTimeParticipants };
+            const uniqueNames = [...new Set(Object.values(allParticipantsObj))];
+            const actualCount = uniqueNames.length;
+            
+            const speakerNames = {};
+            uniqueNames.forEach((name, i) => {
+              speakerNames[`Speaker ${String.fromCharCode(65 + i)}`] = name;
+            });
+
+            await addDoc(collection(db, 'meetings'), {
+              userId: currentUser.uid,
+              title: `Live Meeting — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+              date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              time: meetingStartTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              duration: durationStr,
+              host: displayName,
+              attendees: actualCount,
+              attendeeCount: actualCount,
+              speakerNames: speakerNames,
+              participantNames: uniqueNames,
+              tags: ['Live Meeting'],
+              color: '#10B981',
+              letter: 'L',
+              summary: `Live meeting hosted by ${displayName} with ${actualCount} participant(s). Duration: ${durationStr}. (Not Recorded)`,
+              actionItems: [],
+              chapters: [],
+              transcript: [],
+              transcriptText: '',
+              createdAt: serverTimestamp(),
+            });
+          } catch (err) {
+            console.error('Failed to save unrecorded meeting:', err);
+          }
           navigate('/history');
         }
       });
