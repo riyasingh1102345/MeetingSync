@@ -46,14 +46,46 @@ export default function LiveMeeting() {
   // ── Recording Logic ──
   const startRecording = async () => {
     try {
-      // Prompt user to select a screen to record (must include audio)
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      // 1. Capture screen + tab audio
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true
       });
-      streamRef.current = stream;
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      // 2. Capture microphone audio (the user's own voice)
+      let micStream = null;
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      } catch (micErr) {
+        console.warn('Microphone access denied, recording tab audio only:', micErr);
+      }
+
+      // 3. Merge all audio tracks (tab audio + mic) into one stream
+      const audioContext = new AudioContext();
+      const destination = audioContext.createMediaStreamDestination();
+
+      // Add tab audio if available
+      const displayAudioTracks = displayStream.getAudioTracks();
+      if (displayAudioTracks.length > 0) {
+        const tabSource = audioContext.createMediaStreamSource(new MediaStream(displayAudioTracks));
+        tabSource.connect(destination);
+      }
+
+      // Add microphone audio if available
+      if (micStream) {
+        const micSource = audioContext.createMediaStreamSource(micStream);
+        micSource.connect(destination);
+      }
+
+      // 4. Build final stream: screen video + merged audio
+      const combinedStream = new MediaStream([
+        ...displayStream.getVideoTracks(),
+        ...destination.stream.getAudioTracks()
+      ]);
+
+      streamRef.current = displayStream;
+
+      const mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
       mediaRecorderRef.current = mediaRecorder;
       const chunks = [];
 
@@ -63,13 +95,15 @@ export default function LiveMeeting() {
 
       mediaRecorder.onstop = async () => {
         const blob = new Blob(chunks, { type: 'video/webm' });
-        // Stop all tracks to release camera/mic
-        stream.getTracks().forEach(track => track.stop());
+        // Stop all tracks to release camera/mic/screen
+        displayStream.getTracks().forEach(track => track.stop());
+        if (micStream) micStream.getTracks().forEach(track => track.stop());
+        audioContext.close();
         await processAndSaveMeeting(blob);
       };
 
       // Detect if user clicks "Stop Sharing" on the browser native UI
-      stream.getVideoTracks()[0].onended = () => {
+      displayStream.getVideoTracks()[0].onended = () => {
         if (mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
           setIsRecording(false);
@@ -80,7 +114,7 @@ export default function LiveMeeting() {
       setIsRecording(true);
     } catch (err) {
       console.error("Recording error:", err);
-      alert("Failed to start recording. Please make sure you share the tab audio.");
+      alert("Failed to start recording. Please allow screen sharing and microphone access.");
     }
   };
 
