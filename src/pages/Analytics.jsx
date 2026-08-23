@@ -42,10 +42,13 @@ function MeetingInsightCard({ meeting }) {
   const displayTime = time || '';
 
   const actualCount = meeting.attendeeCount || attendees || 1;
+  const speakerNames = meeting.speakerNames || {};
   const attendeeList = Array.from({ length: Math.min(actualCount, 8) }, (_, i) => {
-    // Generate Speaker A, Speaker B, etc.
     const letter = String.fromCharCode(65 + i);
-    return { name: `Speaker ${letter}`, role: 'Meeting Participant' };
+    const speakerLabel = `Speaker ${letter}`;
+    // Use real name from AI analysis if available, otherwise use speaker label
+    const realName = speakerNames[speakerLabel] || speakerLabel;
+    return { name: realName, role: 'Meeting Participant' };
   });
 
   // Parse summary / action items
