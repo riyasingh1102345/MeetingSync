@@ -119,7 +119,16 @@ export default function LiveMeeting() {
         body: JSON.stringify({ videoUrl: cloudinaryUrl }),
       });
 
-      if (!processRes.ok) throw new Error('AI processing failed');
+      if (!processRes.ok) {
+        let errMessage = 'AI processing failed';
+        try {
+          const errData = await processRes.json();
+          errMessage = errData.error || errMessage;
+        } catch (parseErr) {
+          errMessage = `Server error (${processRes.status}): Backend may be sleeping or unreachable.`;
+        }
+        throw new Error(errMessage);
+      }
       setProcessStep('summarizing');
       const aiData = await processRes.json();
 
