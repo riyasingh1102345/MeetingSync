@@ -94,7 +94,7 @@ export default function SignIn() {
   });
 
   return (
-    <div style={{ fontFamily: font, display: 'flex', minHeight: '100vh', background: C.bg }}>
+    <div style={{ fontFamily: font, display: 'flex', height: '100vh', background: C.bg, overflow: 'hidden' }}>
 
       {/* ─── LEFT PANEL ─────────────────────────────── */}
       <div style={{
@@ -102,8 +102,9 @@ export default function SignIn() {
         background: 'linear-gradient(145deg, #0F172A 0%, #1E3A8A 60%, #1D4ED8 100%)',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
-        padding: '48px 56px',
+        justifyContent: 'center',
+        gap: 40,
+        padding: '40px 56px',
         position: 'relative',
         overflow: 'hidden',
         flexShrink: 0,
@@ -151,11 +152,11 @@ export default function SignIn() {
       </div>
 
       {/* ─── RIGHT PANEL ─────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px', background: C.bg, overflowY: 'auto' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 40px', background: C.bg, overflow: 'hidden' }}>
         <div style={{ width: '100%', maxWidth: 420 }}>
 
           {/* Top link */}
-          <div style={{ textAlign: 'right', marginBottom: 32 }}>
+          <div style={{ textAlign: 'right', marginBottom: 20 }}>
             <span style={{ fontSize: 13.5, color: C.textSecondary }}>
               {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
               <button onClick={() => setIsSignUp(!isSignUp)} style={{ color: C.blue, fontWeight: 700, fontSize: 13.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -165,11 +166,11 @@ export default function SignIn() {
           </div>
 
           {/* Heading */}
-          <div style={{ marginBottom: 32 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: C.textPrimary, letterSpacing: '-0.02em', marginBottom: 8 }}>
+          <div style={{ marginBottom: 20 }}>
+            <h1 style={{ fontSize: 26, fontWeight: 800, color: C.textPrimary, letterSpacing: '-0.02em', marginBottom: 6 }}>
               {isSignUp ? 'Create your account' : 'Welcome back'}
             </h1>
-            <p style={{ fontSize: 14.5, color: C.textSecondary, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.5 }}>
               {isSignUp ? 'Start your 14-day free trial, no credit card required.' : 'Sign in to continue to your MeetLens AI account.'}
             </p>
           </div>
@@ -308,7 +309,7 @@ export default function SignIn() {
           )}
 
           {/* Footer */}
-          <p style={{ marginTop: 32, fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 1.6 }}>
+          <p style={{ marginTop: 20, fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 1.6 }}>
             By continuing, you agree to our{' '}
             <a href="#" style={{ color: C.textSecondary, textDecoration: 'none', fontWeight: 600 }}>Terms of Service</a>
             {' '}and{' '}
