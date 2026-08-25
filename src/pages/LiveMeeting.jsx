@@ -38,7 +38,7 @@ export default function LiveMeeting() {
   const [copied, setCopied] = useState(false);
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://8x8.vc/${roomName}`);
+    navigator.clipboard.writeText(`https://meet.jit.si/${roomName}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -187,7 +187,7 @@ export default function LiveMeeting() {
 
   // ── Jitsi Setup ──
   useEffect(() => {
-    const domain = '8x8.vc';
+    const domain = 'meet.jit.si';
     const options = {
       roomName,
       width: '100%',
