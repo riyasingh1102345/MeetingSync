@@ -145,10 +145,22 @@ export default function MeetingDetail() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.darkBorder}`, background: 'transparent', fontSize: 13, fontWeight: 600, color: C.darkText, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = C.darkHover} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <button onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              alert('Meeting link copied to clipboard!');
+            }} style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.darkBorder}`, background: 'transparent', fontSize: 13, fontWeight: 600, color: C.darkText, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = C.darkHover} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <Share size={14} /> Share
             </button>
-            <button style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: C.blue, fontSize: 13, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = C.blueHover} onMouseLeave={e => e.currentTarget.style.background = C.blue}>
+            <button onClick={() => {
+              const content = `Meeting: ${meeting?.title}\nDate: ${meeting?.date}\n\nSUMMARY:\n${meeting?.summary}\n\nACTION ITEMS:\n${meeting?.actionItems?.join('\n')}\n\nTRANSCRIPT:\n${meeting?.transcriptText || 'No transcript available.'}`;
+              const blob = new Blob([content], { type: 'text/plain' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${meeting?.title || 'Meeting'}.txt`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: C.blue, fontSize: 13, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = C.blueHover} onMouseLeave={e => e.currentTarget.style.background = C.blue}>
               <Download size={14} /> Export
             </button>
           </div>
