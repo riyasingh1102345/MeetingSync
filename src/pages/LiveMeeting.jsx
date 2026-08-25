@@ -38,7 +38,7 @@ export default function LiveMeeting() {
   const [copied, setCopied] = useState(false);
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://meet.jit.si/${roomName}`);
+    navigator.clipboard.writeText(`https://8x8.vc/${roomName}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -187,7 +187,7 @@ export default function LiveMeeting() {
 
   // ── Jitsi Setup ──
   useEffect(() => {
-    const domain = 'meet.jit.si';
+    const domain = '8x8.vc';
     const options = {
       roomName,
       width: '100%',
@@ -202,6 +202,10 @@ export default function LiveMeeting() {
         disableDeepLinking: true,
         enableLobbyChat: false,
         hideLobbyButton: true,
+        disableLobby: true,
+        enableInsecureRoomNameWarning: false,
+        requireDisplayName: false,
+        lobbyEnabled: false,
       },
       interfaceConfigOverwrite: {
         TOOLBAR_BUTTONS: [
