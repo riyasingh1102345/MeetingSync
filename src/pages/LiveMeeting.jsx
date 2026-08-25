@@ -345,40 +345,40 @@ export default function LiveMeeting() {
   }
 
   return (
-    <div style={{ fontFamily: font, display: 'flex', flexDirection: 'column', height: '100vh', background: '#090E17' }}>
+    <div style={{ fontFamily: font, display: 'flex', flexDirection: 'column', height: '100vh', background: '#090E17', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '14px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
-        <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', color: '#9CA3AF', textDecoration: 'none' }}>
-          <ArrowLeft size={16} />
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', color: '#9CA3AF', textDecoration: 'none' }}>
+          <ArrowLeft size={14} />
         </Link>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#F9FAFB' }}>Live Meeting</div>
-          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 1 }}>Host: {displayName}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#F9FAFB' }}>Live Meeting</div>
+          <div style={{ fontSize: 11, color: '#6B7280' }}>Host: {displayName}</div>
         </div>
 
         {/* Copy Meeting Link */}
         <button
           onClick={handleCopyLink}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 8,
+            display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6,
             background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.15)',
             color: copied ? '#10B981' : '#60A5FA',
             border: `1px solid ${copied ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.3)'}`,
-            fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', marginLeft: 20
+            fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', marginLeft: 12
           }}
         >
-          {copied ? '✓ Link Copied!' : '🔗 Copy Meeting Link'}
+          {copied ? '✓ Copied!' : '🔗 Copy Link'}
         </button>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Record Button */}
           {!isRecording ? (
-            <button onClick={startRecording} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 20px', background: '#EF4444', color: '#FFF', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 0 20px rgba(239,68,68,0.3)' }}>
-              <Radio size={16} /> Start Recording
+            <button onClick={startRecording} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: '#EF4444', color: '#FFF', borderRadius: 6, border: 'none', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 0 20px rgba(239,68,68,0.3)' }}>
+              <Radio size={14} /> Start Recording
             </button>
           ) : (
-            <button onClick={stopRecording} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 20px', background: 'transparent', color: '#EF4444', borderRadius: 8, border: '1px solid #EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', animation: 'pulse 2s infinite' }}>
-              <StopCircle size={16} /> Stop Recording
+            <button onClick={stopRecording} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: 'transparent', color: '#EF4444', borderRadius: 6, border: '1px solid #EF4444', fontWeight: 700, fontSize: 12, cursor: 'pointer', animation: 'pulse 2s infinite' }}>
+              <StopCircle size={14} /> Stop Recording
             </button>
           )}
           
@@ -391,19 +391,19 @@ export default function LiveMeeting() {
           `}</style>
 
           {/* Participant count */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(255,255,255,0.06)', borderRadius: 8 }}>
-            <Users size={14} color="#9CA3AF" />
-            <span style={{ fontSize: 13, color: '#D1D5DB', fontWeight: 600 }}>{participantCount}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: 'rgba(255,255,255,0.06)', borderRadius: 6 }}>
+            <Users size={13} color="#9CA3AF" />
+            <span style={{ fontSize: 12, color: '#D1D5DB', fontWeight: 600 }}>{participantCount}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 0 3px rgba(16,185,129,0.2)' }} />
-            <span style={{ fontSize: 13, color: '#10B981', fontWeight: 600 }}>Live</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 0 3px rgba(16,185,129,0.2)' }} />
+            <span style={{ fontSize: 12, color: '#10B981', fontWeight: 600 }}>Live</span>
           </div>
         </div>
       </div>
 
-      {/* Jitsi Embed */}
-      <div ref={jitsiContainer} style={{ flex: 1, overflow: 'hidden' }} />
+      {/* Jitsi Embed - takes all remaining space */}
+      <div ref={jitsiContainer} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }} />
     </div>
   );
 }
