@@ -28,6 +28,7 @@ export default function LiveMeeting() {
   const [allTimeParticipants, setAllTimeParticipants] = useState({});
   const [participantCount, setParticipantCount] = useState(1);
   const [meetingStartTime] = useState(new Date());
+  const meetingSavedRef = useRef(false);
 
   const displayName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Guest';
   
@@ -278,7 +279,11 @@ export default function LiveMeeting() {
       api.addEventListener('participantJoined', updateParticipants);
       api.addEventListener('participantLeft', updateParticipants);
       api.addEventListener('displayNameChange', updateParticipants);
-      api.addEventListener('readyToClose', async () => {
+      const handleMeetingEnd = async () => {
+        // Guard: prevent double-save if both events fire
+        if (meetingSavedRef.current) return;
+        meetingSavedRef.current = true;
+
         // If recording is active when user hangs up, stop recording (which triggers upload and save)
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
           stopRecording();
@@ -320,12 +325,16 @@ export default function LiveMeeting() {
               transcriptText: '',
               createdAt: serverTimestamp(),
             });
+            console.log('Meeting saved to Firestore successfully');
           } catch (err) {
             console.error('Failed to save unrecorded meeting:', err);
           }
           navigate('/history');
         }
-      });
+      };
+
+      api.addEventListener('readyToClose', handleMeetingEnd);
+      api.addEventListener('videoConferenceLeft', handleMeetingEnd);
     };
 
     if (!window.JitsiMeetExternalAPI) {
