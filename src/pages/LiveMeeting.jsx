@@ -8,7 +8,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 const font = "'Plus Jakarta Sans', sans-serif";
 const CLOUDINARY_CLOUD_NAME = 'dkcea1x5';
 const CLOUDINARY_UPLOAD_PRESET = 'meetingsync_preset';
-const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const SERVER_URL = import.meta.env.VITE_API_URL || 'https://meetingsync-server.onrender.com';
 
 export default function LiveMeeting() {
   const { currentUser } = useAuth();
