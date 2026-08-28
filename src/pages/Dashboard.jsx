@@ -14,9 +14,20 @@ export default function Dashboard() {
   const { currentUser } = useAuth();
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: 'assistant', text: "Welcome to MeetLens AI! I'm your personal meeting assistant. How can I help you today?" }
-  ]);
+  
+  // Load chat history from localStorage, or use default welcome message
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem('dashboard_chat_history');
+    if (saved) return JSON.parse(saved);
+    return [
+      { role: 'assistant', text: "Welcome to MeetLens AI! I'm your personal meeting assistant. How can I help you today?" }
+    ];
+  });
+
+  // Save chat history to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('dashboard_chat_history', JSON.stringify(messages));
+  }, [messages]);
 
   const name = currentUser?.displayName?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'there';
   const hour = new Date().getHours();
