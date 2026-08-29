@@ -15,10 +15,17 @@ export default function Dashboard() {
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   
-  // Load chat history from localStorage, or use default welcome message
+  // Load chat history from localStorage safely
   const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem('dashboard_chat_history');
-    if (saved) return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem('dashboard_chat_history');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse chat history');
+    }
     return [
       { role: 'assistant', text: "Welcome to MeetLens AI! I'm your personal meeting assistant. How can I help you today?" }
     ];

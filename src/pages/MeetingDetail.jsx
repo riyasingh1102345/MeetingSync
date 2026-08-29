@@ -42,8 +42,15 @@ export default function MeetingDetail() {
   const [aiInput, setAiInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem(`meeting_chat_${id}`);
-    if (saved) return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem(`meeting_chat_${id}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse meeting chat history');
+    }
     return [
       { role: 'ai', text: "Ask any question about this meeting and get a timestamp-grounded answer." }
     ];
