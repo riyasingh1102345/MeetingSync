@@ -148,24 +148,6 @@ export default function SignIn() {
             ))}
           </div>
         </div>
-
-        {/* Testimonial */}
-        <div style={{ position: 'relative', zIndex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 24px' }}>
-          <div style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, fontStyle: 'italic', marginBottom: 14 }}>
-            "MeetLens AI saves our team hours every week. The AI summaries are incredibly accurate and the timestamp navigation is a game-changer."
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #60A5FA, #A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white' }}>A</div>
-            <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'white' }}>Ada Lovelace</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>Product Lead, Fireflies</div>
-            </div>
-            {/* Stars */}
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 2 }}>
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: '#FBBF24', fontSize: 13 }}>★</span>)}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ─── RIGHT PANEL ─────────────────────────────── */}
