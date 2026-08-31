@@ -21,7 +21,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Helper: try multiple Gemini models with retry to handle 503 overload errors
 async function callGemini(prompt) {
-  const models = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.5-flash'];
+  const models = ['gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-3.6-flash'];
   for (const modelName of models) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
