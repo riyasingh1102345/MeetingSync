@@ -19,6 +19,26 @@ const PORT = process.env.PORT || 3001;
 const aai = new AssemblyAI({ apiKey: process.env.ASSEMBLYAI_API_KEY });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// Helper: try multiple Gemini models with retry to handle 503 overload errors
+async function callGemini(prompt) {
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  for (const modelName of models) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.log(`🤖 Trying ${modelName} (attempt ${attempt})...`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        console.log(`✅ ${modelName} responded successfully`);
+        return result.response.text();
+      } catch (err) {
+        console.warn(`⚠️ ${modelName} attempt ${attempt} failed: ${err.message}`);
+        if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+  }
+  throw new Error('All Gemini models are currently unavailable. Please try again.');
+}
+
 // Health check
 app.get('/', (req, res) => {
   res.json({ status: 'MeetLens AI server is running!' });
@@ -118,7 +138,6 @@ app.post('/api/process', async (req, res) => {
     let aiData = { summary: 'Summary not available.', actionItems: [], chapters: [], host: 'Unknown', attendeeCount: 1, speakerNames: {} };
 
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
       const prompt = `
 You are an expert AI meeting analyst. Analyze the following meeting transcript and return a JSON object.
 
@@ -150,8 +169,7 @@ Respond ONLY with valid JSON in this exact format:
 TRANSCRIPT:
 ${timestampedText}
 `;
-      const result = await model.generateContent(prompt);
-      const rawText = result.response.text();
+      const rawText = await callGemini(prompt);
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         aiData = JSON.parse(jsonMatch[0]);
@@ -190,7 +208,6 @@ app.post('/api/chat', async (req, res) => {
   if (!query) return res.status(400).json({ error: 'Query is required' });
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
     const prompt = `
 You are a helpful, personalized AI meeting assistant. Answer the user's question concisely based ONLY on the provided meeting context below. If the answer is not in the context, politely say you don't know based on the current meetings.
 
@@ -200,8 +217,8 @@ ${context || 'No meeting context provided.'}
 USER QUESTION:
 ${query}
     `;
-    const result = await model.generateContent(prompt);
-    res.json({ answer: result.response.text() });
+    const answer = await callGemini(prompt);
+    res.json({ answer });
   } catch (err) {
     console.error('❌ Chat error:', err.message);
     res.status(500).json({ error: err.message });
