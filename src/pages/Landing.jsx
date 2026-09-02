@@ -53,7 +53,7 @@ export default function Landing() {
             <div style={{ width: 32, height: 32, borderRadius: 8, background: C.blue, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Video size={18} color="white" />
             </div>
-            <span style={{ fontWeight: 800, fontSize: 20, color: C.textPrimary, letterSpacing: '-0.02em' }}>MeetingSync</span>
+            <span style={{ fontWeight: 800, fontSize: 20, color: C.textPrimary, letterSpacing: '-0.02em' }}>MeetLens AI</span>
           </div>
 
           <div style={{ display: 'flex', gap: 32 }}>
@@ -95,7 +95,7 @@ export default function Landing() {
               <Link to="/signin" state={{ isSignUp: true }}
                 style={{ background: heroBtnHover ? C.blueHover : C.blue, color: 'white', padding: '14px 28px', borderRadius: 8, fontSize: 15, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(37,99,235,0.3)', transition: 'all 0.2s' }}
                 onMouseEnter={() => setHeroBtnHover(true)} onMouseLeave={() => setHeroBtnHover(false)}>
-                Start Free Trial <ArrowRight size={16} />
+                Get Started <ArrowRight size={16} />
               </Link>
               <button
                 style={{ border: `1px solid ${C.border}`, padding: '14px 28px', borderRadius: 8, fontSize: 15, fontWeight: 600, color: C.textPrimary, display: 'inline-flex', alignItems: 'center', gap: 8, backgroundColor: demoBtnHover ? C.bgWarm : 'white', transition: 'all 0.2s' }}
@@ -311,9 +311,9 @@ export default function Landing() {
           <Link to="/signin" state={{ isSignUp: true }}
             style={{ background: 'white', color: C.blueDark, padding: '16px 32px', borderRadius: 8, fontSize: 16, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, transition: 'all 0.2s', transform: ctaBtnHover ? 'translateY(-2px)' : 'none', boxShadow: ctaBtnHover ? '0 12px 24px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.1)' }}
             onMouseEnter={() => setCtaBtnHover(true)} onMouseLeave={() => setCtaBtnHover(false)}>
-            Start Free Trial <ArrowRight size={18} />
+            Get Started <ArrowRight size={18} />
           </Link>
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 24 }}>No credit card required • Free 14-day trial • Cancel anytime</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 24 }}>100% Free • Unlimited meeting transcriptions • AI-powered action items</div>
         </div>
       </section>
 
@@ -324,7 +324,7 @@ export default function Landing() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                 <div style={{ width: 30, height: 30, borderRadius: 6, background: C.blue, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Video size={16} color="white" /></div>
-                <span style={{ fontWeight: 800, fontSize: 18, color: 'white', letterSpacing: '-0.02em' }}>MeetingSync</span>
+                <span style={{ fontWeight: 800, fontSize: 18, color: 'white', letterSpacing: '-0.02em' }}>MeetLens AI</span>
               </div>
               <p style={{ fontSize: 13.5, color: '#94A3B8', lineHeight: 1.7, maxWidth: 260 }}>AI-powered meeting intelligence for the modern workplace.</p>
             </div>
@@ -347,7 +347,7 @@ export default function Landing() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 32 }}>
-            <span style={{ fontSize: 13, color: '#64748B' }}>© 2026 MeetingSync. All rights reserved.</span>
+            <span style={{ fontSize: 13, color: '#64748B' }}>© 2026 MeetLens AI. All rights reserved.</span>
           </div>
         </div>
       </footer>
