@@ -190,7 +190,7 @@ export default function SignIn() {
               {isSignUp ? 'Create your account' : 'Welcome back'}
             </h1>
             <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.5 }}>
-              {isSignUp ? 'Start your 14-day free trial, no credit card required.' : 'Sign in to continue to your MeetLens AI account.'}
+              {isSignUp ? 'Sign up to get started with MeetLens AI for free.' : 'Sign in to continue to your MeetLens AI account.'}
             </p>
           </div>
 
@@ -317,7 +317,7 @@ export default function SignIn() {
           {/* Trust badges */}
           {isSignUp && (
             <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {['No credit card required', 'Free 14-day trial', 'Cancel anytime'].map(t => (
+              {['100% Free to use', 'Unlimited AI meeting summaries', 'Instant transcriptions'].map(t => (
                 <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 18, height: 18, borderRadius: '50%', background: C.successLight, color: C.success, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Check size={11} strokeWidth={3} />
