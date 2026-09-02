@@ -41,9 +41,17 @@ export default function MeetingDetail() {
   const [showRaw, setShowRaw] = useState(false);
   const [aiInput, setAiInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: 'ai', text: "Ask any question about this meeting and get a timestamp-grounded answer." }
-  ]);
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem(`meeting_chat_${id}`);
+    if (saved) return JSON.parse(saved);
+    return [
+      { role: 'ai', text: "Ask any question about this meeting and get a timestamp-grounded answer." }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`meeting_chat_${id}`, JSON.stringify(messages));
+  }, [messages, id]);
 
   useEffect(() => {
     async function fetchMeeting() {
