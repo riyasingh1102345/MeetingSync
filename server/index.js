@@ -59,6 +59,7 @@ app.post('/api/process', async (req, res) => {
     const transcript = await aai.transcripts.transcribe({
       audio: videoUrl,
       speaker_labels: true,
+      speech_model: 'nano' // EXTREMELY fast model for live demos
     });
 
     if (transcript.status === 'error') {
