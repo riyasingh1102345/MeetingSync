@@ -88,7 +88,7 @@ export default function MeetingDetail() {
         contextStr += meeting?.transcriptText || 'No transcript available for this meeting.';
       }
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://meetingsync-server.onrender.com';
       const res = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
