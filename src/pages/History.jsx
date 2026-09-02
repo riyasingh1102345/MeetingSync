@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { History as HistoryIcon, Clock, Users, ArrowRight, Video } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { History as HistoryIcon, Clock, Users, ArrowRight, Video, Trash2 } from 'lucide-react';
+import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +35,18 @@ export default function History() {
     }
     fetchHistory();
   }, [currentUser]);
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation(); // prevent card click
+    if (!window.confirm("Are you sure you want to delete this meeting?")) return;
+    try {
+      await deleteDoc(doc(db, 'meetings', id));
+      setHistory(prev => prev.filter(m => m.id !== id));
+    } catch (err) {
+      console.error('Failed to delete meeting:', err);
+      alert('Failed to delete meeting');
+    }
+  };
 
   if (loading) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94A3B8' }}>Loading history...</div>;
@@ -93,8 +105,18 @@ export default function History() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Video size={14} /> Hosted by {meeting.host}</div>
                       </div>
                     </div>
-                    <div style={{ width: 36, height: 36, borderRadius: 12, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>
-                      <ArrowRight size={18} />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <div 
+                        onClick={(e) => handleDelete(e, meeting.id)}
+                        style={{ width: 36, height: 36, borderRadius: 12, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444', transition: 'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#FECACA'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#FEE2E2'}
+                      >
+                        <Trash2 size={18} />
+                      </div>
+                      <div style={{ width: 36, height: 36, borderRadius: 12, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>
+                        <ArrowRight size={18} />
+                      </div>
                     </div>
                   </div>
                   <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
