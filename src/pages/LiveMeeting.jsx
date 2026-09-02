@@ -180,14 +180,23 @@ export default function LiveMeeting() {
       const uniqueNames = [...new Set(Object.values(allParticipantsObj))];
       const actualCount = uniqueNames.length;
 
-      // Merge real names with AI speaker labels
+      // Merge real names with AI speaker labels and forcefully overwrite defaults like "Speaker A"
       const speakerNames = aiData.speakerNames || {};
       uniqueNames.forEach((name, i) => {
         const letter = String.fromCharCode(65 + i);
-        if (!speakerNames[`Speaker ${letter}`]) {
-          speakerNames[`Speaker ${letter}`] = name;
+        const label = `Speaker ${letter}`;
+        if (!speakerNames[label] || speakerNames[label] === label) {
+          speakerNames[label] = name;
         }
       });
+
+      // Rewrite the transcript lines so the real names show up in the UI!
+      if (aiData.transcriptLines) {
+        aiData.transcriptLines = aiData.transcriptLines.map(line => ({
+          ...line,
+          speaker: speakerNames[line.speaker] || line.speaker
+        }));
+      }
 
       const docRef = await addDoc(collection(db, 'meetings'), {
         userId: currentUser.uid,
