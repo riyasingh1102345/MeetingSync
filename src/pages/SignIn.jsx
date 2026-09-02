@@ -40,12 +40,31 @@ export default function SignIn() {
   const [googleHover, setGoogleHover] = useState(false);
 
   // Auth specific state
-  const { login, signup, loginWithGoogle } = useAuth();
+  const { login, signup, loginWithGoogle, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  async function handleResetPassword(e) {
+    e.preventDefault();
+    if (!email) {
+      return setError('Please enter your email address first to reset password.');
+    }
+    
+    try {
+      setMessage('');
+      setError('');
+      setLoading(true);
+      await resetPassword(email);
+      setMessage('Check your inbox for further instructions.');
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -201,6 +220,7 @@ export default function SignIn() {
           </div>
 
           {error && <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '10px 14px', borderRadius: 8, fontSize: 13.5, marginBottom: 20, fontWeight: 500 }}>{error}</div>}
+          {message && <div style={{ background: '#D1FAE5', color: '#065F46', padding: '10px 14px', borderRadius: 8, fontSize: 13.5, marginBottom: 20, fontWeight: 500 }}>{message}</div>}
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
@@ -248,7 +268,7 @@ export default function SignIn() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <label style={{ fontSize: 13.5, fontWeight: 600, color: C.textPrimary }}>Password</label>
-                  {!isSignUp && <a href="#" style={{ fontSize: 12.5, color: C.blue, fontWeight: 600, textDecoration: 'none' }}>Forgot password?</a>}
+                  {!isSignUp && <a href="#" onClick={handleResetPassword} style={{ fontSize: 12.5, color: C.blue, fontWeight: 600, textDecoration: 'none' }}>Forgot password?</a>}
                 </div>
                 <div style={{ position: 'relative' }}>
                   <Lock size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: pwFocus ? C.blue : '#94A3B8', transition: 'color 0.2s' }} />
