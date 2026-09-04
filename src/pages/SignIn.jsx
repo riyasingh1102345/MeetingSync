@@ -234,7 +234,7 @@ export default function SignIn() {
                     <Users size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: nameFocus ? C.blue : '#94A3B8', transition: 'color 0.2s' }} />
                     <input
                       type="text"
-                      placeholder="John Smith"
+                      placeholder="Riya Singh"
                       required={isSignUp}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
