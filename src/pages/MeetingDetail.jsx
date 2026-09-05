@@ -321,16 +321,6 @@ export default function MeetingDetail() {
                   )}
                 </div>
               )}
-              {isChatLoading && (
-                <div style={{ display: 'flex', gap: 16 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: C.blueLight, color: C.blue, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Sparkles size={16} />
-                  </div>
-                  <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 16, borderTopLeftRadius: 4, padding: '12px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                    <Loader2 size={16} className="animate-spin" color={C.textMuted} />
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -379,6 +369,16 @@ export default function MeetingDetail() {
               </div>
             </div>
           ))}
+          {isChatLoading && (
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 10, background: C.blueLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, alignSelf: 'flex-end' }}>
+                <Sparkles size={14} color={C.blue} />
+              </div>
+              <div style={{ padding: '14px 18px', borderRadius: '16px 16px 16px 4px', background: C.bgWarm, border: `1px solid ${C.border}` }}>
+                <Loader2 size={16} className="animate-spin" color={C.textMuted} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Quick Suggestions */}
