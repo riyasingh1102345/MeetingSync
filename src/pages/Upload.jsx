@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CloudUpload, Link as LinkIcon, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CloudUpload, Shield, CheckCircle2, AlertCircle, Users, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -39,6 +39,7 @@ export default function Upload() {
   const [step, setStep] = useState(null); // null | 'uploading' | 'transcribing' | 'summarizing' | 'saving' | 'done' | 'error'
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  const [participantsInput, setParticipantsInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
   const { currentUser } = useAuth();
@@ -50,38 +51,60 @@ export default function Upload() {
 
     setErrorMsg('');
 
-    // ── Step 1: Upload to Cloudinary ──────────────────────────────────
-    setStep('uploading');
-    setProgress(0);
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
     let cloudinaryUrl;
-    try {
-      await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            const data = JSON.parse(xhr.responseText);
-            cloudinaryUrl = data.secure_url;
-            resolve();
-          } else {
-            reject(new Error('Cloudinary upload failed: ' + xhr.responseText));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Network error during upload.'));
-        xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`);
-        xhr.send(formData);
-      });
-    } catch (err) {
-      setStep('error');
-      setErrorMsg(err.message);
-      return;
+
+    // Check if this is a link import
+    if (file.fromUrl) {
+      const url = file.fromUrl.trim();
+      
+      // Check for YouTube links
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        setStep('error');
+        setErrorMsg('YouTube does not allow direct cloud audio extraction via external APIs. Please download the video as an MP3 or MP4 (using any free YouTube-to-MP3 tool) and drop the file directly into the upload box above.');
+        return;
+      }
+
+      // Check for basic valid URL format
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        setStep('error');
+        setErrorMsg('Please enter a valid URL starting with https:// or http://');
+        return;
+      }
+
+      cloudinaryUrl = url;
+    } else {
+      // ── Step 1: Upload to Cloudinary ──────────────────────────────────
+      setStep('uploading');
+      setProgress(0);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      try {
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+          };
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              const data = JSON.parse(xhr.responseText);
+              cloudinaryUrl = data.secure_url;
+              resolve();
+            } else {
+              reject(new Error('Cloudinary upload failed: ' + xhr.responseText));
+            }
+          };
+          xhr.onerror = () => reject(new Error('Network error during upload.'));
+          xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`);
+          xhr.send(formData);
+        });
+      } catch (err) {
+        setStep('error');
+        setErrorMsg(err.message);
+        return;
+      }
     }
 
     // ── Step 2: Send to our server for AI processing ──────────────────
@@ -92,7 +115,10 @@ export default function Upload() {
       const response = await fetch(`${SERVER_URL}/api/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoUrl: cloudinaryUrl }),
+        body: JSON.stringify({ 
+          videoUrl: cloudinaryUrl,
+          participants: participantsInput.trim() ? participantsInput.split(',').map(s => s.trim()).filter(Boolean) : undefined
+        }),
       });
 
       if (!response.ok) {
@@ -113,13 +139,14 @@ export default function Upload() {
         duration: 'Processing...',
         attendees: aiData.attendeeCount || 1,
         host: aiData.host || 'Unknown',
-        tags: ['AI Processed'],
+        tags: ['AI Processed', 'Physical/In-Person Support'],
         color: C.blue,
         letter: file.name.charAt(0).toUpperCase(),
         videoUrl: cloudinaryUrl,
         transcript: aiData.transcriptLines,
         transcriptText: aiData.transcriptText,
         chapters: aiData.chapters || [],
+        minuteByMinute: aiData.minuteByMinute || [],
         summary: aiData.summary,
         actionItems: aiData.actionItems,
         attendeeCount: aiData.attendeeCount || 1,
@@ -214,6 +241,51 @@ export default function Upload() {
         <p style={{ fontSize: 14.5, color: C.textSecondary }}>Add audio or video and let our AI do the rest — transcripts, summaries, and action items.</p>
       </div>
 
+      {/* Physical/In-Person Meeting Speaker Hint Box */}
+      <div style={{
+        background: '#FFFFFF',
+        border: `1.5px solid ${C.border}`,
+        borderRadius: 16,
+        padding: '20px 24px',
+        marginBottom: 24,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14.5, fontWeight: 700, color: C.textPrimary }}>
+            <Users size={18} color={C.blue} />
+            Meeting Attendees / Expected Speakers (Physical Meeting Support)
+          </div>
+          <span style={{ fontSize: 12, background: C.blueLight, color: C.blue, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>
+            ✦ AI Voice Matching
+          </span>
+        </div>
+        <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 12, lineHeight: 1.5 }}>
+          For in-person or recorded room meetings, list the participants who spoke. Our AI matches their voice patterns and assigns their real names to the transcript.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input
+            type="text"
+            value={participantsInput}
+            onChange={(e) => setParticipantsInput(e.target.value)}
+            placeholder="e.g. Riya Singh, Grover, Kritika (comma-separated)"
+            style={{
+              flex: 1,
+              height: 44,
+              borderRadius: 10,
+              border: `1.5px solid ${C.border}`,
+              padding: '0 16px',
+              fontSize: 14,
+              fontFamily: font,
+              outline: 'none',
+              transition: 'border-color 0.2s',
+              background: C.bgWarm
+            }}
+            onFocus={e => e.currentTarget.style.borderColor = C.blue}
+            onBlur={e => e.currentTarget.style.borderColor = C.border}
+          />
+        </div>
+      </div>
+
       {/* Drop Zone */}
       <div
         onClick={() => fileInputRef.current?.click()}
@@ -248,48 +320,6 @@ export default function Upload() {
         </button>
         <div style={{ fontSize: 13, color: C.textMuted, marginTop: 24, fontWeight: 500 }}>
           Supports MP3, MP4, WAV, M4A · Powered by AssemblyAI + Gemini
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '36px 0' }}>
-        <div style={{ flex: 1, height: 1, background: C.border }} />
-        <span style={{ fontSize: 12.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.05em' }}>OR</span>
-        <div style={{ flex: 1, height: 1, background: C.border }} />
-      </div>
-
-      {/* Link Import */}
-      <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 16, padding: 28, boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <LinkIcon size={16} color={C.textMuted} />
-          Import from link
-        </div>
-        <div style={{ fontSize: 13.5, color: C.textSecondary, marginBottom: 20 }}>
-          Paste a YouTube, Google Drive, or direct video link
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <input
-            id="link-import-input"
-            style={{
-              flex: 1, height: 44, border: `1.5px solid ${C.border}`, borderRadius: 10,
-              padding: '0 16px', fontSize: 14, outline: 'none', background: C.bgWarm,
-              fontFamily: font, transition: 'border-color 0.2s'
-            }}
-            placeholder="https://..."
-            onFocus={e => e.currentTarget.style.borderColor = C.blue}
-            onBlur={e => e.currentTarget.style.borderColor = C.border}
-          />
-          <button
-            onClick={() => {
-              const url = document.getElementById('link-import-input').value;
-              if (url) handleFile({ name: 'Link Import', fromUrl: url });
-            }}
-            style={{
-              background: C.textPrimary, color: 'white', border: 'none', borderRadius: 10,
-              padding: '0 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: font,
-            }}>
-            Import
-          </button>
         </div>
       </div>
 
