@@ -51,38 +51,60 @@ export default function Upload() {
 
     setErrorMsg('');
 
-    // ── Step 1: Upload to Cloudinary ──────────────────────────────────
-    setStep('uploading');
-    setProgress(0);
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
     let cloudinaryUrl;
-    try {
-      await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            const data = JSON.parse(xhr.responseText);
-            cloudinaryUrl = data.secure_url;
-            resolve();
-          } else {
-            reject(new Error('Cloudinary upload failed: ' + xhr.responseText));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Network error during upload.'));
-        xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`);
-        xhr.send(formData);
-      });
-    } catch (err) {
-      setStep('error');
-      setErrorMsg(err.message);
-      return;
+
+    // Check if this is a link import
+    if (file.fromUrl) {
+      const url = file.fromUrl.trim();
+      
+      // Check for YouTube links
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        setStep('error');
+        setErrorMsg('YouTube does not allow direct cloud audio extraction via external APIs. Please download the video as an MP3 or MP4 (using any free YouTube-to-MP3 tool) and drop the file directly into the upload box above.');
+        return;
+      }
+
+      // Check for basic valid URL format
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        setStep('error');
+        setErrorMsg('Please enter a valid URL starting with https:// or http://');
+        return;
+      }
+
+      cloudinaryUrl = url;
+    } else {
+      // ── Step 1: Upload to Cloudinary ──────────────────────────────────
+      setStep('uploading');
+      setProgress(0);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      try {
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+          };
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              const data = JSON.parse(xhr.responseText);
+              cloudinaryUrl = data.secure_url;
+              resolve();
+            } else {
+              reject(new Error('Cloudinary upload failed: ' + xhr.responseText));
+            }
+          };
+          xhr.onerror = () => reject(new Error('Network error during upload.'));
+          xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`);
+          xhr.send(formData);
+        });
+      } catch (err) {
+        setStep('error');
+        setErrorMsg(err.message);
+        return;
+      }
     }
 
     // ── Step 2: Send to our server for AI processing ──────────────────
@@ -315,7 +337,7 @@ export default function Upload() {
           Import from link
         </div>
         <div style={{ fontSize: 13.5, color: C.textSecondary, marginBottom: 20 }}>
-          Paste a YouTube, Google Drive, or direct video link
+          Paste a direct audio/video link (e.g. .mp4, .mp3, Cloudinary, S3). For YouTube, download the audio and drop the file above.
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <input
