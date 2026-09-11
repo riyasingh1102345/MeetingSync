@@ -20,8 +20,7 @@ const aai = new AssemblyAI({ apiKey: process.env.ASSEMBLYAI_API_KEY });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Helper: try multiple Gemini models with retry to handle 503 overload errors
-async function callGemini(prompt) {
-  const models = ['gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-3.6-flash'];
+async function callGemini(prompt, models = ['gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-3.6-flash']) {
   for (const modelName of models) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
@@ -46,13 +45,13 @@ app.get('/', (req, res) => {
 
 // Main AI processing endpoint
 app.post('/api/process', async (req, res) => {
-  const { videoUrl } = req.body;
+  const { videoUrl, participants } = req.body;
 
   if (!videoUrl) {
     return res.status(400).json({ error: 'videoUrl is required' });
   }
 
-  console.log('🎙️  Starting transcription for:', videoUrl);
+  console.log('🎙️  Starting transcription for:', videoUrl, 'with participants hint:', participants);
 
   try {
     // Step 1: Transcribe with AssemblyAI (with speaker diarization)
@@ -133,36 +132,73 @@ app.post('/api/process', async (req, res) => {
       .map(l => `[${l.time}] ${l.speaker}: ${l.text}`)
       .join('\n');
 
-    // ── Step 2: Ask Gemini to generate summary, action items, AND chapters ──
-    console.log('🤖 Generating AI summary & chapters...');
-    let aiData = { summary: 'Summary not available.', actionItems: [], chapters: [], host: 'Unknown', attendeeCount: 1, speakerNames: {} };
+    // ── Step 2: Ask Gemini to generate summary, action items, chapters, minute-by-minute & real speaker names ──
+    console.log('🤖 Generating AI summary, minute-by-minute timeline & speaker diarization...');
+    let aiData = { 
+      summary: 'Summary not available.', 
+      actionItems: [], 
+      chapters: [], 
+      minuteByMinute: [], 
+      host: 'Unknown', 
+      attendeeCount: 1, 
+      speakerNames: {} 
+    };
+
+    const participantsHint = participants 
+      ? `PARTICIPANTS HINT (Expected speakers in this meeting): ${Array.isArray(participants) ? participants.join(', ') : participants}`
+      : 'PARTICIPANTS HINT: Not explicitly provided. Analyze transcript cues, greetings, self-introductions, and names addressed to determine who each speaker is.';
 
     try {
       const prompt = `
-You are an expert AI meeting analyst. Analyze the following meeting transcript and return a JSON object.
+You are an expert AI meeting intelligence and audio analyst. Analyze the following meeting transcript and return a detailed JSON object.
 
-RULES:
-- "chapters" should group the conversation into logical sections (like YouTube chapters). Each chapter needs:
-  - "time": the EXACT timestamp from the transcript where this topic starts (e.g. "00:12"), must match a real [MM:SS] marker in the transcript
-  - "title": a short 3-5 word title for that section
-  - "bullets": 2-4 bullet points summarizing the KEY things said in that section. Be concise, factual, and specific. Do NOT paraphrase vaguely.
-- Number of chapters should scale with video length: ~2-3 chapters for <2 min videos, ~4-6 for 2-10 min, ~7-10 for longer.
-- "summary": a 2-3 sentence overall meeting summary.
-- "actionItems": 3-5 specific action items mentioned (tasks, follow-ups, decisions). If none, return [].
-- "host": The name of the person who led the discussion or spoke most. If they introduced themselves by name, use their real name. Otherwise use their speaker label (e.g. "Speaker A").
-- "attendeeCount": total number of unique speakers.
-- "speakerNames": A mapping of speaker labels to real names. Look carefully in the transcript for any self-introductions like "Hi, I'm John", "This is Sarah", "My name is...", etc. Map the speaker label to the real name. Example: { "Speaker A": "Riya Singh", "Speaker B": "Speaker B" }. If a speaker never says their name, keep their label as-is.
+${participantsHint}
 
-Respond ONLY with valid JSON in this exact format:
+CRITICAL RULES:
+1. "speakerNames": Identify the REAL NAMES of every speaker label (Speaker A, Speaker B, Speaker C, etc.).
+   - Look carefully for self-introductions ("Hi, I'm Riya", "My name is Grover"), greetings ("Good morning Kritika", "Thanks Riya"), and conversational assignments ("Grover, can you handle this?").
+   - If a PARTICIPANTS HINT is given, match the speaker labels to those names based on context.
+   - Do NOT leave names as generic "Speaker A" if any name or clue exists. Only keep "Speaker A" if there is genuinely no name or clue anywhere in the transcript.
+   - Format example: { "Speaker A": "Riya Singh", "Speaker B": "Grover" }
+
+2. "minuteByMinute": A detailed chronological breakdown of the meeting into 1-minute or 2-minute chronological windows (e.g. "00:00 - 01:00", "01:00 - 02:00", etc.).
+   For EACH window provide:
+   - "time": start timestamp (e.g. "00:00")
+   - "timeRange": e.g. "00:00 - 01:00"
+   - "title": concise 3-6 word summary of discussion in that window
+   - "speakers": array of real names who spoke in this window (e.g. ["Riya Singh", "Grover"])
+   - "summary": 1-2 sentence description of what happened in that specific minute
+   - "keyPoints": 1-3 bullet points highlighting what was said or decided in that window
+
+3. "chapters": High-level chapter milestones (like YouTube chapters):
+   - "time": timestamp (e.g. "00:00")
+   - "title": short 3-5 word title
+   - "bullets": 2-4 key takeaway bullet points
+
+4. "summary": A clear 2-4 sentence executive overview of the meeting.
+5. "actionItems": Specific tasks, assignments, and follow-ups with person assigned if mentioned (e.g. "Grover to test Stripe API by Friday").
+6. "host": The real name of the primary meeting host/facilitator.
+7. "attendeeCount": Total number of unique human attendees.
+
+Respond ONLY with valid JSON in this exact structure:
 {
   "summary": "...",
-  "actionItems": ["...", "..."],
-  "host": "Speaker A or their real name",
+  "actionItems": ["..."],
+  "host": "Real Name",
   "attendeeCount": 2,
-  "speakerNames": { "Speaker A": "Real Name or Speaker A", "Speaker B": "Real Name or Speaker B" },
+  "speakerNames": { "Speaker A": "Real Name", "Speaker B": "Real Name" },
+  "minuteByMinute": [
+    {
+      "time": "00:00",
+      "timeRange": "00:00 - 01:00",
+      "title": "Welcome & Project Overview",
+      "speakers": ["Riya Singh", "Grover"],
+      "summary": "Riya welcomed Grover and set the agenda regarding the upcoming e-commerce release.",
+      "keyPoints": ["Reviewed project goals", "Agreed on launch priorities"]
+    }
+  ],
   "chapters": [
-    { "time": "00:00", "title": "Opening & Introductions", "bullets": ["Point 1", "Point 2"] },
-    { "time": "01:15", "title": "Main Discussion", "bullets": ["Point 1", "Point 2", "Point 3"] }
+    { "time": "00:00", "title": "Opening & Agenda", "bullets": ["Point 1", "Point 2"] }
   ]
 }
 
@@ -174,26 +210,37 @@ ${timestampedText}
       if (jsonMatch) {
         aiData = JSON.parse(jsonMatch[0]);
       }
-      console.log('✅ AI analysis complete! Chapters:', aiData.chapters?.length);
+      console.log('✅ AI analysis complete! Minute-by-minute entries:', aiData.minuteByMinute?.length, 'Chapters:', aiData.chapters?.length);
     } catch (geminiErr) {
       console.warn('⚠️ Gemini failed:', geminiErr.message);
       aiData.summary = 'AI summary is temporarily unavailable. Your full transcript is ready below.';
     }
 
-    // ── Calculate accurate unique speakers from AssemblyAI diarization ──
-    const uniqueSpeakers = new Set(transcriptLines.map(l => l.speaker)).size;
+    // ── Rewrite transcript lines using the resolved real speaker names ──
+    const resolvedSpeakerNames = aiData.speakerNames || {};
+    const updatedTranscriptLines = transcriptLines.map(line => {
+      const realName = resolvedSpeakerNames[line.speaker] || line.speaker;
+      return {
+        ...line,
+        speaker: realName
+      };
+    });
+
+    // ── Calculate accurate unique speakers ──
+    const uniqueSpeakers = new Set(updatedTranscriptLines.map(l => l.speaker)).size;
     const actualAttendeeCount = uniqueSpeakers > 0 ? uniqueSpeakers : 1;
 
-    // Return all data to the React app
+    // Return all enhanced data to the React app
     res.json({
       transcriptText: transcript.text,
-      transcriptLines,
+      transcriptLines: updatedTranscriptLines,
       chapters: aiData.chapters || [],
+      minuteByMinute: aiData.minuteByMinute || [],
       summary: aiData.summary,
       actionItems: aiData.actionItems || [],
       host: aiData.host || 'Unknown',
       attendeeCount: actualAttendeeCount,
-      speakerNames: aiData.speakerNames || {},
+      speakerNames: resolvedSpeakerNames,
     });
 
   } catch (err) {
@@ -217,7 +264,7 @@ ${context || 'No meeting context provided.'}
 USER QUESTION:
 ${query}
     `;
-    const answer = await callGemini(prompt);
+    const answer = await callGemini(prompt, ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.7-flash']);
     res.json({ answer });
   } catch (err) {
     console.error('❌ Chat error:', err.message);

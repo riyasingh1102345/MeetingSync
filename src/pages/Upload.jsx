@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CloudUpload, Link as LinkIcon, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CloudUpload, Link as LinkIcon, Shield, CheckCircle2, AlertCircle, Users, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -39,6 +39,7 @@ export default function Upload() {
   const [step, setStep] = useState(null); // null | 'uploading' | 'transcribing' | 'summarizing' | 'saving' | 'done' | 'error'
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  const [participantsInput, setParticipantsInput] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
   const { currentUser } = useAuth();
@@ -92,7 +93,10 @@ export default function Upload() {
       const response = await fetch(`${SERVER_URL}/api/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoUrl: cloudinaryUrl }),
+        body: JSON.stringify({ 
+          videoUrl: cloudinaryUrl,
+          participants: participantsInput.trim() ? participantsInput.split(',').map(s => s.trim()).filter(Boolean) : undefined
+        }),
       });
 
       if (!response.ok) {
@@ -113,13 +117,14 @@ export default function Upload() {
         duration: 'Processing...',
         attendees: aiData.attendeeCount || 1,
         host: aiData.host || 'Unknown',
-        tags: ['AI Processed'],
+        tags: ['AI Processed', 'Physical/In-Person Support'],
         color: C.blue,
         letter: file.name.charAt(0).toUpperCase(),
         videoUrl: cloudinaryUrl,
         transcript: aiData.transcriptLines,
         transcriptText: aiData.transcriptText,
         chapters: aiData.chapters || [],
+        minuteByMinute: aiData.minuteByMinute || [],
         summary: aiData.summary,
         actionItems: aiData.actionItems,
         attendeeCount: aiData.attendeeCount || 1,
@@ -212,6 +217,51 @@ export default function Upload() {
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 6 }}>Upload a Meeting</h1>
         <p style={{ fontSize: 14.5, color: C.textSecondary }}>Add audio or video and let our AI do the rest — transcripts, summaries, and action items.</p>
+      </div>
+
+      {/* Physical/In-Person Meeting Speaker Hint Box */}
+      <div style={{
+        background: '#FFFFFF',
+        border: `1.5px solid ${C.border}`,
+        borderRadius: 16,
+        padding: '20px 24px',
+        marginBottom: 24,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14.5, fontWeight: 700, color: C.textPrimary }}>
+            <Users size={18} color={C.blue} />
+            Meeting Attendees / Expected Speakers (Physical Meeting Support)
+          </div>
+          <span style={{ fontSize: 12, background: C.blueLight, color: C.blue, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>
+            ✦ AI Voice Matching
+          </span>
+        </div>
+        <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 12, lineHeight: 1.5 }}>
+          For in-person or recorded room meetings, list the participants who spoke. Our AI matches their voice patterns and assigns their real names to the transcript.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input
+            type="text"
+            value={participantsInput}
+            onChange={(e) => setParticipantsInput(e.target.value)}
+            placeholder="e.g. Riya Singh, Grover, Kritika (comma-separated)"
+            style={{
+              flex: 1,
+              height: 44,
+              borderRadius: 10,
+              border: `1.5px solid ${C.border}`,
+              padding: '0 16px',
+              fontSize: 14,
+              fontFamily: font,
+              outline: 'none',
+              transition: 'border-color 0.2s',
+              background: C.bgWarm
+            }}
+            onFocus={e => e.currentTarget.style.borderColor = C.blue}
+            onBlur={e => e.currentTarget.style.borderColor = C.border}
+          />
+        </div>
       </div>
 
       {/* Drop Zone */}

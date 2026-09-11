@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Share, Download, Clock, MessageSquare, Sparkles, Send, ArrowLeft, Loader2 } from 'lucide-react';
+import { Share, Download, Clock, MessageSquare, Sparkles, Send, ArrowLeft, Loader2, ListOrdered, Users, CheckCircle2 } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -202,15 +202,16 @@ export default function MeetingDetail() {
 
           {/* Transcript & Summary Tabs */}
           <div style={{ flex: 1, padding: '32px 48px', maxWidth: 1000, margin: '0 auto', width: '100%' }}>
-            <div style={{ display: 'flex', gap: 32, borderBottom: `1px solid ${C.darkBorder}`, marginBottom: 24 }}>
-              {['transcript', 'summary', 'action items'].map((t) => (
+            <div style={{ display: 'flex', gap: 28, borderBottom: `1px solid ${C.darkBorder}`, marginBottom: 24, overflowX: 'auto' }}>
+              {['transcript', 'minute by minute', 'summary', 'action items'].map((t) => (
                 <button key={t} onClick={() => setTab(t)} style={{
                   padding: '0 0 16px 0', fontSize: 14.5, fontWeight: 600, border: 'none', background: 'none',
                   color: tab === t ? '#fff' : C.darkTextSec,
                   borderBottom: tab === t ? `2px solid ${C.blue}` : '2px solid transparent',
-                  marginBottom: -1, transition: 'all 0.15s', cursor: 'pointer', textTransform: 'capitalize'
+                  marginBottom: -1, transition: 'all 0.15s', cursor: 'pointer', textTransform: 'capitalize',
+                  whiteSpace: 'nowrap'
                 }}>
-                  {t}
+                  {t === 'minute by minute' ? '⏱ Minute by Minute' : t}
                 </button>
               ))}
             </div>
@@ -304,6 +305,106 @@ export default function MeetingDetail() {
                   </div>
                 );
               })()}
+
+              {/* ── MINUTE BY MINUTE TAB ── */}
+              {tab === 'minute by minute' && (() => {
+                let list = meeting?.minuteByMinute || [];
+                // Dynamic fallback if meeting was processed without minuteByMinute field
+                if (list.length === 0 && meeting?.transcript && meeting.transcript.length > 0) {
+                  const groups = {};
+                  meeting.transcript.forEach((line) => {
+                    const parts = (line.time || '00:00').split(':');
+                    const min = parseInt(parts[0], 10) || 0;
+                    const key = `${String(min).padStart(2, '0')}:00 - ${String(min + 1).padStart(2, '0')}:00`;
+                    if (!groups[key]) {
+                      groups[key] = {
+                        time: `${String(min).padStart(2, '0')}:00`,
+                        timeRange: key,
+                        speakers: new Set(),
+                        lines: []
+                      };
+                    }
+                    if (line.speaker) groups[key].speakers.add(line.speaker);
+                    groups[key].lines.push(line.text);
+                  });
+
+                  list = Object.values(groups).map((g, idx) => ({
+                    time: g.time,
+                    timeRange: g.timeRange,
+                    title: `Discussion Period ${idx + 1}`,
+                    speakers: Array.from(g.speakers),
+                    summary: g.lines.slice(0, 2).join(' '),
+                    keyPoints: g.lines.slice(0, 3)
+                  }));
+                }
+
+                if (list.length === 0) {
+                  return (
+                    <div style={{ padding: '40px 0', textAlign: 'center', color: C.darkTextSec, fontSize: 15 }}>
+                      No minute-by-minute data available.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.darkTextSec, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Chronological Meeting Breakdown ({list.length} intervals)
+                      </span>
+                      <span style={{ fontSize: 12, background: 'rgba(37,99,235,0.15)', color: C.blue, padding: '4px 10px', borderRadius: 20, fontWeight: 700 }}>
+                        Click any timestamp to seek video
+                      </span>
+                    </div>
+
+                    {list.map((item, i) => (
+                      <div key={i} style={{ background: C.darkSurface, border: `1px solid ${C.darkBorder}`, borderRadius: 16, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* Header: Timestamp badge + Title + Speaker chips */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, borderBottom: `1px solid ${C.darkBorder}`, paddingBottom: 14 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <button onClick={() => handleTimestampClick(item.time || item.timeRange?.split(' ')[0])}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 800, color: C.blue, background: 'rgba(37,99,235,0.18)', border: `1px solid rgba(37,99,235,0.3)`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', flexShrink: 0 }}>
+                              <Clock size={12} strokeWidth={3} /> ▶ {item.timeRange || item.time}
+                            </button>
+                            <span style={{ fontSize: 15.5, fontWeight: 800, color: C.darkText }}>{item.title}</span>
+                          </div>
+
+                          {/* Speaker Chips */}
+                          {item.speakers && item.speakers.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              {item.speakers.map((spk, idx) => (
+                                <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 700, background: 'rgba(255,255,255,0.06)', color: C.darkText, border: `1px solid ${C.darkBorder}`, borderRadius: 20, padding: '3px 10px' }}>
+                                  <Users size={11} color={C.blue} /> {spk}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Summary description */}
+                        {item.summary && (
+                          <div style={{ fontSize: 14.5, color: C.darkTextSec, lineHeight: 1.6 }}>
+                            {item.summary}
+                          </div>
+                        )}
+
+                        {/* Key Points */}
+                        {item.keyPoints && item.keyPoints.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                            {item.keyPoints.map((pt, j) => (
+                              <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13.5, color: C.darkText, lineHeight: 1.5 }}>
+                                <CheckCircle2 size={14} color="#10B981" style={{ flexShrink: 0, marginTop: 3 }} />
+                                <span>{pt}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
               {tab === 'summary' && (
                 <div style={{ fontSize: 16, color: C.darkTextSec, lineHeight: 1.8, background: C.darkSurface, borderRadius: 16, padding: '24px 32px', border: `1px solid ${C.darkBorder}` }}>
                   {meeting?.summary || 'Summary not available for this meeting. Please re-upload using the new AI processing pipeline.'}
