@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CloudUpload, Link as LinkIcon, Shield, CheckCircle2, AlertCircle, Users, Sparkles } from 'lucide-react';
+import { CloudUpload, Shield, CheckCircle2, AlertCircle, Users, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -320,48 +320,6 @@ export default function Upload() {
         </button>
         <div style={{ fontSize: 13, color: C.textMuted, marginTop: 24, fontWeight: 500 }}>
           Supports MP3, MP4, WAV, M4A · Powered by AssemblyAI + Gemini
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '36px 0' }}>
-        <div style={{ flex: 1, height: 1, background: C.border }} />
-        <span style={{ fontSize: 12.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.05em' }}>OR</span>
-        <div style={{ flex: 1, height: 1, background: C.border }} />
-      </div>
-
-      {/* Link Import */}
-      <div style={{ background: 'white', border: `1px solid ${C.border}`, borderRadius: 16, padding: 28, boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <LinkIcon size={16} color={C.textMuted} />
-          Import from link
-        </div>
-        <div style={{ fontSize: 13.5, color: C.textSecondary, marginBottom: 20 }}>
-          Paste a direct audio/video link (e.g. .mp4, .mp3, Cloudinary, S3). For YouTube, download the audio and drop the file above.
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <input
-            id="link-import-input"
-            style={{
-              flex: 1, height: 44, border: `1.5px solid ${C.border}`, borderRadius: 10,
-              padding: '0 16px', fontSize: 14, outline: 'none', background: C.bgWarm,
-              fontFamily: font, transition: 'border-color 0.2s'
-            }}
-            placeholder="https://..."
-            onFocus={e => e.currentTarget.style.borderColor = C.blue}
-            onBlur={e => e.currentTarget.style.borderColor = C.border}
-          />
-          <button
-            onClick={() => {
-              const url = document.getElementById('link-import-input').value;
-              if (url) handleFile({ name: 'Link Import', fromUrl: url });
-            }}
-            style={{
-              background: C.textPrimary, color: 'white', border: 'none', borderRadius: 10,
-              padding: '0 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: font,
-            }}>
-            Import
-          </button>
         </div>
       </div>
 
