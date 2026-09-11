@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   ArrowLeft, Users, Loader2, Video, VideoOff, Mic, MicOff, 
-  Monitor, PhoneOff, Radio, StopCircle, Copy, Check, Shield, Sparkles
+  Monitor, PhoneOff, Radio, StopCircle, Copy, Check, AlertCircle, Sparkles
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../firebase';
@@ -42,6 +42,7 @@ export default function LiveMeeting() {
   // State
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [mediaError, setMediaError] = useState(null);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [hasRemoteUser, setHasRemoteUser] = useState(false);
   const [participants, setParticipants] = useState([displayName]);
@@ -55,32 +56,61 @@ export default function LiveMeeting() {
   const timerRef = useRef(null);
   const meetingStartTimeRef = useRef(new Date());
 
-  // ── 1. Initialize Local Video Stream & WebRTC ──
+  // ── 1. Acquire Camera & Microphone with Graceful Fallbacks ──
   useEffect(() => {
+    let isMounted = true;
     let unsubscribeRoom = null;
 
-    async function setupRoom() {
+    async function initMediaAndSignaling() {
+      let stream = null;
+
+      // Try camera + mic first
       try {
-        // Acquire camera and mic
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: true
         });
+      } catch (err1) {
+        console.warn('Could not get both video and audio. Trying video only or audio only...', err1);
+        try {
+          // Try video only
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          setMicEnabled(false);
+        } catch (err2) {
+          try {
+            // Try audio only
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            setCameraEnabled(false);
+          } catch (err3) {
+            console.error('All media acquisition attempts failed:', err3);
+            if (isMounted) {
+              setMediaError('Camera/Microphone is blocked or in use by another application (like Teams/Zoom). You can still share your screen and record!');
+              setCameraEnabled(false);
+              setMicEnabled(false);
+            }
+          }
+        }
+      }
+
+      if (stream && isMounted) {
         localStreamRef.current = stream;
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
+          localVideoRef.current.play().catch(e => console.log('Video play error (safe to ignore):', e));
         }
+      }
 
-        // Initialize PeerConnection
+      // ── WebRTC PeerConnection & Firestore Signaling (Safely Wrapped) ──
+      try {
         const pc = new RTCPeerConnection(RTC_CONFIG);
         pcRef.current = pc;
 
-        // Push local tracks into connection
-        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        if (stream) {
+          stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        }
 
-        // Listen for remote peer tracks
         pc.ontrack = (event) => {
-          if (event.streams && event.streams[0]) {
+          if (event.streams && event.streams[0] && isMounted) {
             if (remoteVideoRef.current) {
               remoteVideoRef.current.srcObject = event.streams[0];
             }
@@ -88,15 +118,21 @@ export default function LiveMeeting() {
           }
         };
 
-        // Firestore Signaling
         const roomDocRef = doc(db, 'meetingRooms', roomId);
-        const roomSnapshot = await getDoc(roomDocRef);
+        const roomSnapshot = await getDoc(roomDocRef).catch(e => {
+          console.warn('Firestore room check notice (rules or network):', e.message);
+          return null;
+        });
 
-        if (!roomSnapshot.exists()) {
-          // Host creates room and offer
+        if (roomSnapshot && !roomSnapshot.exists()) {
+          // Host Room Setup
           pc.onicecandidate = async (e) => {
             if (e.candidate) {
-              await addDoc(collection(roomDocRef, 'offerCandidates'), e.candidate.toJSON());
+              try {
+                await addDoc(collection(roomDocRef, 'offerCandidates'), e.candidate.toJSON());
+              } catch (iceErr) {
+                console.warn('Candidate add notice:', iceErr.message);
+              }
             }
           };
 
@@ -109,82 +145,83 @@ export default function LiveMeeting() {
             hostId: currentUser?.uid || 'guest',
             participants: [displayName],
             createdAt: serverTimestamp()
-          });
+          }).catch(e => console.warn('Room creation notice:', e.message));
 
-          // Listen for answer from peer
           unsubscribeRoom = onSnapshot(roomDocRef, (snapshot) => {
             const data = snapshot.data();
             if (!pc.currentRemoteDescription && data?.answer) {
               const answerDescription = new RTCSessionDescription(data.answer);
               pc.setRemoteDescription(answerDescription);
             }
-            if (data?.participants) {
+            if (data?.participants && isMounted) {
               setParticipants(data.participants);
             }
-          });
+          }, (err) => console.warn('Room snapshot notice:', err.message));
 
-          // Listen for answer candidates
           onSnapshot(collection(roomDocRef, 'answerCandidates'), (snapshot) => {
             snapshot.docChanges().forEach((change) => {
               if (change.type === 'added') {
                 const candidate = new RTCIceCandidate(change.doc.data());
-                pc.addIceCandidate(candidate);
+                pc.addIceCandidate(candidate).catch(() => {});
               }
             });
-          });
+          }, () => {});
 
-        } else {
-          // Peer joins room and creates answer
+        } else if (roomSnapshot && roomSnapshot.exists()) {
+          // Peer Join Setup
           const roomData = roomSnapshot.data();
           if (roomData.participants && !roomData.participants.includes(displayName)) {
-            await updateDoc(roomDocRef, {
+            updateDoc(roomDocRef, {
               participants: [...roomData.participants, displayName]
-            });
+            }).catch(() => {});
           }
 
           pc.onicecandidate = async (e) => {
             if (e.candidate) {
-              await addDoc(collection(roomDocRef, 'answerCandidates'), e.candidate.toJSON());
+              try {
+                await addDoc(collection(roomDocRef, 'answerCandidates'), e.candidate.toJSON());
+              } catch (iceErr) {
+                console.warn('Answer candidate add notice:', iceErr.message);
+              }
             }
           };
 
-          const offerDescription = roomData.offer;
-          await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
+          if (roomData.offer) {
+            await pc.setRemoteDescription(new RTCSessionDescription(roomData.offer));
+            const answerDescription = await pc.createAnswer();
+            await pc.setLocalDescription(answerDescription);
 
-          const answerDescription = await pc.createAnswer();
-          await pc.setLocalDescription(answerDescription);
+            await updateDoc(roomDocRef, {
+              answer: { type: answerDescription.type, sdp: answerDescription.sdp }
+            }).catch(() => {});
+          }
 
-          await updateDoc(roomDocRef, {
-            answer: { type: answerDescription.type, sdp: answerDescription.sdp }
-          });
-
-          // Listen for offer candidates
           onSnapshot(collection(roomDocRef, 'offerCandidates'), (snapshot) => {
             snapshot.docChanges().forEach((change) => {
               if (change.type === 'added') {
                 const candidate = new RTCIceCandidate(change.doc.data());
-                pc.addIceCandidate(candidate);
+                pc.addIceCandidate(candidate).catch(() => {});
               }
             });
-          });
+          }, () => {});
 
-          // Listen for participant updates
           unsubscribeRoom = onSnapshot(roomDocRef, (snapshot) => {
             const data = snapshot.data();
-            if (data?.participants) {
+            if (data?.participants && isMounted) {
               setParticipants(data.participants);
             }
-          });
+          }, () => {});
         }
 
-      } catch (err) {
-        console.error('Error establishing custom WebRTC meeting:', err);
+      } catch (signalingErr) {
+        console.warn('PeerConnection / Signaling note:', signalingErr.message);
       }
     }
 
-    setupRoom();
+    initMediaAndSignaling();
 
     return () => {
+      isMounted = false;
       if (unsubscribeRoom) unsubscribeRoom();
       if (pcRef.current) pcRef.current.close();
       if (localStreamRef.current) {
@@ -195,16 +232,67 @@ export default function LiveMeeting() {
   }, [roomId]);
 
   // ── Media Controls ──
-  const toggleMic = () => {
-    if (!localStreamRef.current) return;
+  const toggleMic = async () => {
+    if (!localStreamRef.current) {
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (localStreamRef.current) {
+          audioStream.getAudioTracks().forEach(t => localStreamRef.current.addTrack(t));
+        } else {
+          localStreamRef.current = audioStream;
+        }
+        setMicEnabled(true);
+      } catch (err) {
+        alert('Microphone access could not be granted. Please check browser permissions.');
+      }
+      return;
+    }
     const audioTracks = localStreamRef.current.getAudioTracks();
+    if (audioTracks.length === 0) {
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioStream.getAudioTracks().forEach(t => localStreamRef.current.addTrack(t));
+        setMicEnabled(true);
+      } catch (e) {
+        alert('Could not enable microphone.');
+      }
+      return;
+    }
     audioTracks.forEach(t => { t.enabled = !micEnabled; });
     setMicEnabled(!micEnabled);
   };
 
-  const toggleCamera = () => {
-    if (!localStreamRef.current) return;
+  const toggleCamera = async () => {
+    if (!localStreamRef.current) {
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        localStreamRef.current = videoStream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = videoStream;
+          localVideoRef.current.play().catch(() => {});
+        }
+        setCameraEnabled(true);
+      } catch (err) {
+        alert('Camera access could not be granted or is used by another application (Teams/Zoom).');
+      }
+      return;
+    }
     const videoTracks = localStreamRef.current.getVideoTracks();
+    if (videoTracks.length === 0) {
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const newTrack = videoStream.getVideoTracks()[0];
+        localStreamRef.current.addTrack(newTrack);
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.play().catch(() => {});
+        }
+        setCameraEnabled(true);
+      } catch (e) {
+        alert('Could not enable camera.');
+      }
+      return;
+    }
     videoTracks.forEach(t => { t.enabled = !cameraEnabled; });
     setCameraEnabled(!cameraEnabled);
   };
@@ -223,6 +311,7 @@ export default function LiveMeeting() {
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
+          localVideoRef.current.play().catch(() => {});
         }
 
         screenTrack.onended = () => {
@@ -231,7 +320,7 @@ export default function LiveMeeting() {
 
         setIsSharingScreen(true);
       } catch (err) {
-        console.error('Screen sharing cancelled or failed:', err);
+        console.warn('Screen sharing cancelled:', err);
       }
     } else {
       stopScreenShare();
@@ -239,15 +328,17 @@ export default function LiveMeeting() {
   };
 
   const stopScreenShare = () => {
-    if (!localStreamRef.current) return;
-    const camTrack = localStreamRef.current.getVideoTracks()[0];
-    if (pcRef.current && camTrack) {
-      const senders = pcRef.current.getSenders();
-      const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-      if (videoSender) videoSender.replaceTrack(camTrack);
-    }
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
+    if (localStreamRef.current) {
+      const camTrack = localStreamRef.current.getVideoTracks()[0];
+      if (pcRef.current && camTrack) {
+        const senders = pcRef.current.getSenders();
+        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+        if (videoSender) videoSender.replaceTrack(camTrack);
+      }
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+        localVideoRef.current.play().catch(() => {});
+      }
     }
     setIsSharingScreen(false);
   };
@@ -260,12 +351,23 @@ export default function LiveMeeting() {
   };
 
   // ── Recording & AI Processing ──
-  const startRecording = () => {
-    if (!localStreamRef.current) return;
-
+  const startRecording = async () => {
     try {
+      let recordingStream = localStreamRef.current;
+
+      // If no local stream or user is sharing screen, ask for displayMedia so screen + tab audio is recorded
+      if (!recordingStream || recordingStream.getVideoTracks().length === 0) {
+        try {
+          const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+          recordingStream = screenStream;
+        } catch (e) {
+          alert('Screen capture cancelled or unavailable.');
+          return;
+        }
+      }
+
       recordingChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(localStreamRef.current, { mimeType: 'video/webm' });
+      const mediaRecorder = new MediaRecorder(recordingStream, { mimeType: 'video/webm' });
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (e) => {
@@ -283,7 +385,8 @@ export default function LiveMeeting() {
       }, 1000);
 
     } catch (err) {
-      console.error('Failed to start native recording:', err);
+      console.error('Failed to start recording:', err);
+      alert('Recording could not be started: ' + err.message);
     }
   };
 
@@ -461,28 +564,49 @@ export default function LiveMeeting() {
             <Users size={14} color="#60A5FA" />
             <span>{participants.length}</span>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 0 3px rgba(16,185,129,0.2)' }} />
+            <span style={{ fontSize: 12, color: '#10B981', fontWeight: 600 }}>Live</span>
+          </div>
         </div>
       </div>
+
+      {/* Optional Media Notice (if camera is occupied by Teams or blocked) */}
+      {mediaError && (
+        <div style={{ background: 'rgba(245,158,11,0.15)', borderBottom: '1px solid rgba(245,158,11,0.3)', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, color: '#FCD34D' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertCircle size={16} />
+            <span>{mediaError}</span>
+          </div>
+          <button 
+            onClick={() => { setMediaError(null); toggleCamera(); }}
+            style={{ background: '#F59E0B', color: '#000', border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Retry Camera
+          </button>
+        </div>
+      )}
 
       {/* ── Main Video Grid Canvas ── */}
       <div style={{ flex: 1, padding: 24, display: 'grid', gridTemplateColumns: hasRemoteUser ? '1fr 1fr' : '1fr', gap: 20, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         
         {/* Local Video Card */}
-        <div style={{ position: 'relative', width: '100%', height: '100%', maxHeight: 'calc(100vh - 170px)', background: '#111827', borderRadius: 20, overflow: 'hidden', border: '1px solid #1F2937', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
+        <div style={{ position: 'relative', width: '100%', height: '100%', maxHeight: 'calc(100vh - 180px)', background: '#111827', borderRadius: 20, overflow: 'hidden', border: '1px solid #1F2937', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
           <video
             ref={localVideoRef}
             autoPlay
             playsInline
             muted
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isSharingScreen ? 'none' : 'scaleX(-1)' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isSharingScreen ? 'none' : 'scaleX(-1)', display: (cameraEnabled || isSharingScreen) ? 'block' : 'none' }}
           />
 
-          {!cameraEnabled && !isSharingScreen && (
-            <div style={{ position: 'absolute', inset: 0, background: '#111827', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#2563EB', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 800 }}>
+          {(!cameraEnabled && !isSharingScreen) && (
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+              <div style={{ width: 84, height: 84, borderRadius: '50%', background: '#2563EB', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, boxShadow: '0 8px 24px rgba(37,99,235,0.35)' }}>
                 {displayName.charAt(0).toUpperCase()}
               </div>
-              <span style={{ fontSize: 14, color: '#94A3B8', fontWeight: 600 }}>Camera is turned off</span>
+              <span style={{ fontSize: 16, color: '#F8FAFC', fontWeight: 700 }}>{displayName}</span>
+              <span style={{ fontSize: 12.5, color: '#94A3B8', fontWeight: 500 }}>Microphone is {micEnabled ? 'Active' : 'Muted'}</span>
             </div>
           )}
 
@@ -490,12 +614,13 @@ export default function LiveMeeting() {
           <div style={{ position: 'absolute', bottom: 16, left: 16, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(8px)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#FFF' }}>{displayName} (You)</span>
             {!micEnabled && <MicOff size={13} color="#EF4444" />}
+            {isSharingScreen && <Monitor size={13} color="#60A5FA" />}
           </div>
         </div>
 
         {/* Remote Video Card (if 2nd peer joined) */}
         {hasRemoteUser ? (
-          <div style={{ position: 'relative', width: '100%', height: '100%', maxHeight: 'calc(100vh - 170px)', background: '#111827', borderRadius: 20, overflow: 'hidden', border: '1px solid #1F2937', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
+          <div style={{ position: 'relative', width: '100%', height: '100%', maxHeight: 'calc(100vh - 180px)', background: '#111827', borderRadius: 20, overflow: 'hidden', border: '1px solid #1F2937', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
             <video
               ref={remoteVideoRef}
               autoPlay
@@ -508,9 +633,7 @@ export default function LiveMeeting() {
               </span>
             </div>
           </div>
-        ) : (
-          null
-        )}
+        ) : null}
       </div>
 
       {/* ── Bottom Floating Control Toolbar ── */}
@@ -587,7 +710,7 @@ export default function LiveMeeting() {
         <button
           onClick={() => {
             if (isRecording) {
-              if (window.confirm('Meeting is recording. End and analyze now?')) {
+              if (window.confirm('Meeting is currently recording. Would you like to end and analyze it now?')) {
                 stopRecordingAndProcess();
               }
             } else {
