@@ -84,8 +84,23 @@ export default function SignIn() {
 
     try {
       if (isSignUp) {
-        await signup(email, password);
-        // Note: we could update the user's display name here, but keeping it simple for now
+        try {
+          await signup(email, password);
+        } catch (signupErr) {
+          if (signupErr.code === 'auth/email-already-in-use') {
+            try {
+              // Try to seamlessly log them in if they already have an account
+              await login(email, password);
+            } catch (loginErr) {
+              if (loginErr.code === 'auth/wrong-password' || loginErr.code === 'auth/invalid-credential') {
+                throw new Error('This email is already registered. If you used Google to sign in before, please click "Continue with Google", or click "Sign In" to enter your password.');
+              }
+              throw loginErr;
+            }
+          } else {
+            throw signupErr;
+          }
+        }
       } else {
         await login(email, password);
       }
