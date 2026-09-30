@@ -199,27 +199,19 @@ export default function SignIn() {
 
       {/* ─── RIGHT PANEL ─────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 40px', background: C.bg, overflow: 'hidden' }}>
-        <div style={{ width: '100%', maxWidth: 420 }}>
-
-          {/* Top link */}
-          <div style={{ textAlign: 'right', marginBottom: 20 }}>
-            <span style={{ fontSize: 13.5, color: C.textSecondary }}>
-              {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
-              <button onClick={() => setIsSignUp(!isSignUp)} style={{ color: C.blue, fontWeight: 700, fontSize: 13.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                {isSignUp ? 'Sign In' : 'Sign Up'}
-              </button>
-            </span>
-          </div>
+        <div style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
 
           {/* Heading */}
-          <div style={{ marginBottom: 20 }}>
-            <h1 style={{ fontSize: 26, fontWeight: 800, color: C.textPrimary, letterSpacing: '-0.02em', marginBottom: 6 }}>
-              {isSignUp ? 'Create your account' : 'Welcome back'}
+          <div style={{ marginBottom: 32 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: C.textPrimary, letterSpacing: '-0.02em', marginBottom: 8 }}>
+              Welcome to MeetLens AI
             </h1>
-            <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.5 }}>
-              {isSignUp ? 'Sign up to get started with MeetLens AI for free.' : 'Sign in to continue to your MeetLens AI account.'}
+            <p style={{ fontSize: 14.5, color: C.textSecondary, lineHeight: 1.6 }}>
+              Sign in with your Google account to get started for free.
             </p>
           </div>
+
+          {error && <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '10px 14px', borderRadius: 8, fontSize: 13.5, marginBottom: 20, fontWeight: 500, textAlign: 'left' }}>{error}</div>}
 
           {/* Google Button */}
           <button
@@ -229,134 +221,31 @@ export default function SignIn() {
             onMouseEnter={() => setGoogleHover(true)}
             onMouseLeave={() => setGoogleHover(false)}
             style={{
-              width: '100%', padding: '12px 20px', borderRadius: 10, border: `1.5px solid ${googleHover ? '#CBD5E1' : C.border}`,
+              width: '100%', padding: '14px 20px', borderRadius: 12, border: `1.5px solid ${googleHover ? '#CBD5E1' : C.border}`,
               background: googleHover ? C.bgWarm : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 10, fontSize: 14.5, fontWeight: 600, color: C.textPrimary, cursor: 'pointer', marginBottom: 20,
-              transition: 'all 0.2s', fontFamily: font, boxShadow: googleHover ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
+              gap: 12, fontSize: 15, fontWeight: 700, color: C.textPrimary, cursor: loading ? 'not-allowed' : 'pointer', marginBottom: 28,
+              transition: 'all 0.2s', fontFamily: font, boxShadow: googleHover ? '0 4px 12px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
+              opacity: loading ? 0.6 : 1
             }}
           >
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" width={18} height={18} alt="Google" />
-            Continue with Google
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" width={20} height={20} alt="Google" />
+            {loading ? 'Signing in...' : 'Continue with Google'}
           </button>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <div style={{ flex: 1, height: 1, background: C.border }} />
-            <span style={{ fontSize: 12.5, color: '#94A3B8', fontWeight: 500 }}>or continue with email</span>
-            <div style={{ flex: 1, height: 1, background: C.border }} />
+          {/* Trust badges */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            {['100% Free to use', 'Unlimited AI meeting summaries', 'Instant transcriptions', 'No credit card required'].map(t => (
+              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 18, height: 18, borderRadius: '50%', background: C.successLight, color: C.success, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Check size={11} strokeWidth={3} />
+                </div>
+                <span style={{ fontSize: 13.5, color: C.textSecondary, fontWeight: 500 }}>{t}</span>
+              </div>
+            ))}
           </div>
 
-          {error && <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '10px 14px', borderRadius: 8, fontSize: 13.5, marginBottom: 20, fontWeight: 500 }}>{error}</div>}
-          {message && <div style={{ background: '#D1FAE5', color: '#065F46', padding: '10px 14px', borderRadius: 8, fontSize: 13.5, marginBottom: 20, fontWeight: 500 }}>{message}</div>}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* Name field (sign up only) */}
-              {isSignUp && (
-                <div>
-                  <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.textPrimary, marginBottom: 6 }}>Full Name</label>
-                  <div style={{ position: 'relative' }}>
-                    <Users size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: nameFocus ? C.blue : '#94A3B8', transition: 'color 0.2s' }} />
-                    <input
-                      type="text"
-                      placeholder="Riya Singh"
-                      required={isSignUp}
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      style={inputStyle(nameFocus)}
-                      onFocus={() => setNameFocus(true)}
-                      onBlur={() => setNameFocus(false)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Email */}
-              <div>
-                <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.textPrimary, marginBottom: 6 }}>Email address</label>
-                <div style={{ position: 'relative' }}>
-                  <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: emailFocus ? C.blue : '#94A3B8', transition: 'color 0.2s' }} />
-                  <input
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={inputStyle(emailFocus)}
-                    onFocus={() => setEmailFocus(true)}
-                    onBlur={() => setEmailFocus(false)}
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label style={{ fontSize: 13.5, fontWeight: 600, color: C.textPrimary }}>Password</label>
-                  {!isSignUp && <a href="#" onClick={handleResetPassword} style={{ fontSize: 12.5, color: C.blue, fontWeight: 600, textDecoration: 'none' }}>Forgot password?</a>}
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: pwFocus ? C.blue : '#94A3B8', transition: 'color 0.2s' }} />
-                  <input
-                    type={showPw ? 'text' : 'password'}
-                    placeholder="••••••••••••"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    style={{ ...inputStyle(pwFocus), paddingRight: 44 }}
-                    onFocus={() => setPwFocus(true)}
-                    onBlur={() => setPwFocus(false)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw(!showPw)}
-                    style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
-                  >
-                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={loading}
-                onMouseEnter={() => setBtnHover(true)}
-                onMouseLeave={() => setBtnHover(false)}
-                style={{
-                  width: '100%', padding: '13px 24px', borderRadius: 10, border: 'none',
-                  background: btnHover ? C.blueHover : C.blue,
-                  color: 'white', fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  fontFamily: font, transition: 'all 0.2s',
-                  boxShadow: btnHover ? '0 6px 20px rgba(37,99,235,0.4)' : '0 4px 12px rgba(37,99,235,0.25)',
-                  transform: btnHover ? 'translateY(-1px)' : 'none',
-                  marginTop: 4
-                }}
-              >
-                {isSignUp ? 'Create Account' : 'Sign In'} <ArrowRight size={16} />
-              </button>
-            </div>
-          </form>
-
-          {/* Trust badges */}
-          {isSignUp && (
-            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {['100% Free to use', 'Unlimited AI meeting summaries', 'Instant transcriptions'].map(t => (
-                <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: C.successLight, color: C.success, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Check size={11} strokeWidth={3} />
-                  </div>
-                  <span style={{ fontSize: 13, color: C.textSecondary, fontWeight: 500 }}>{t}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Footer */}
-          <p style={{ marginTop: 20, fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 1.6 }}>
+          <p style={{ marginTop: 28, fontSize: 12, color: '#94A3B8', lineHeight: 1.6 }}>
             By continuing, you agree to our{' '}
             <a href="#" style={{ color: C.textSecondary, textDecoration: 'none', fontWeight: 600 }}>Terms of Service</a>
             {' '}and{' '}
