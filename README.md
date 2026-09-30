@@ -2,30 +2,65 @@
 
 **Live Demo:** [https://meetlens-ai.vercel.app](https://meetlens-ai.vercel.app)
 
-MeetLens AI is an intelligent, all-in-one meeting platform that combines high-quality live video conferencing with automated AI analysis. It goes beyond simple transcription by generating minute-by-minute timelines, extracting precise speaker names, and providing a ChatGPT-like AI assistant to query your meeting history.
+MeetLens AI is a meeting intelligence platform I built to help teams get more out of their conversations. Instead of just recording videos or taking basic notes, it combines live video conferencing with AI to automatically generate transcripts, minute-by-minute timelines, summaries, and action items. 
 
-## 🚀 Key Features
+It also includes a ChatGPT-style assistant that lets you "chat" with your past meetings to pull up specific details instantly.
 
-* **In-Built Live Meetings:** Seamless WebRTC-powered (Jitsi) video conferencing with native screen sharing, camera/mic toggles, and real-time recording.
-* **AI-Powered Diarization:** Accurately detects and labels distinct speakers, even mapping them to real participant names using conversational context.
-* **Minute-by-Minute Timeline:** Automatically breaks down your 1-hour meeting into bite-sized, chronological segments with summaries and key bullet points.
-* **Interactive AI Chatbot:** Ask questions about past meetings like *"What did John say about the Q3 marketing budget?"* and get context-aware answers.
-* **Smart Summaries & Action Items:** Instantly extracts the core summary, decisions made, and pending action items from any meeting.
-* **Video Upload Processing:** Missed recording live? Upload any standard video/audio file (MP4, WebM, MP3) to get the same powerful AI analysis.
+---
 
-## 🛠️ Technical Stack
+## ✨ Features
 
-* **Frontend:** React 19, Vite, React Router, Tailwind CSS (via inline styles & global CSS), Lucide Icons
-* **Backend:** Node.js, Express.js, REST APIs
-* **Database & Auth:** Firebase Firestore (NoSQL), Firebase Authentication (Google OAuth & Email/Password)
-* **AI Pipelines:** 
-  * **Google Gemini AI:** Used for complex contextual analysis, speaker name extraction, minute-by-minute structuring, and the RAG (Retrieval-Augmented Generation) chatbot.
-  * **AssemblyAI:** Used for high-accuracy asynchronous speech-to-text and base speaker diarization.
-* **Media Storage:** Cloudinary (handles robust video file uploads)
-* **Deployment:** Vercel (Frontend) & Render (Backend)
+* 🎥 **Live Meetings** — Full video conferencing (camera, mic, screen sharing) built with Jitsi/WebRTC.
+* 📝 **Smart Transcription** — High-accuracy speech-to-text with automatic speaker detection (Speaker A, Speaker B) using AssemblyAI.
+* ⏱️ **Meeting Timelines** — Automatically breaks down long meetings into chronological, minute-by-minute summaries.
+* 📌 **Instant Summaries & Action Items** — AI automatically extracts key decisions and tasks with deadlines.
+* 💬 **AI Meeting Assistant** — Ask natural-language questions about your meeting history (e.g., "What did we decide about the new marketing budget?").
+* 📤 **File Upload** — Skip the live meeting and just upload existing audio/video recordings for analysis.
 
-## 👨‍💻 Developer Notes
+---
 
-This project was built with a hybrid serverless/Express architecture to bypass client-side AI processing limits, utilizing a robust polling mechanism for long-running transcription tasks.
+## 💻 Tech Stack
 
-*(Recruiters: Feel free to test the application using the live demo link above!)*
+This is built as a modern, serverless web application to ensure fast load times and easy scalability without needing to manage a custom backend server.
+
+**Frontend:**
+* React 19 + Vite
+* React Router
+* Tailwind CSS
+* Lucide Icons
+
+**Backend & Database:**
+* Firebase Authentication (Google OAuth + Email/Password)
+* Firebase Firestore (NoSQL database for storing meeting metadata and transcripts)
+
+**AI & Media Services:**
+* **Google Gemini AI** — Powers the summaries, timelines, action items, and conversational chat.
+* **AssemblyAI** — Handles speech-to-text and speaker diarization.
+* **Jitsi / WebRTC** — Powers the live video conferencing infrastructure.
+
+**Deployment:**
+* Vercel
+
+---
+
+## ⚙️ How It Works Behind the Scenes
+
+1. You conduct a live meeting or upload a recording.
+2. AssemblyAI processes the audio to generate a raw transcript and detects who is speaking when.
+3. The raw data is saved to Firebase Firestore.
+4. Google Gemini analyzes the transcript to structure it into summaries, timelines, and action items.
+5. When you use the AI chat, the app uses prompt engineering to feed relevant meeting context to Gemini so it can accurately answer questions about past discussions.
+
+---
+
+## 🚧 Challenges & What I Learned
+
+Building this taught me a lot about handling asynchronous API calls. Audio transcription takes time, so I had to design the UI to gracefully handle loading states while waiting for AssemblyAI and Gemini to finish processing. I also learned how to prompt AI effectively—tuning Gemini to consistently output clean timelines and action items instead of just a block of text took some careful engineering!
+
+---
+
+**Author**  
+Riya Singh  
+*B.Tech CSE*
+
+
