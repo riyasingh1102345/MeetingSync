@@ -28,6 +28,17 @@ const features = [
   { icon: <Users size={16} />, color: C.purple, bg: C.purpleLight, text: 'Share insights with your entire team instantly' },
 ];
 
+const getFriendlyErrorMessage = (err) => {
+  const code = err.code || err.message || '';
+  if (code.includes('auth/email-already-in-use')) return 'An account with this email already exists. Please log in instead.';
+  if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password') || code.includes('auth/user-not-found')) return 'Invalid email or password.';
+  if (code.includes('auth/weak-password')) return 'Password should be at least 6 characters.';
+  if (code.includes('auth/too-many-requests')) return 'Too many failed attempts. Please try again later.';
+  if (code.includes('auth/popup-closed-by-user')) return 'Google sign-in was cancelled.';
+  if (code.includes('auth/invalid-email')) return 'Please enter a valid email address.';
+  return 'Failed to authenticate. Please try again.';
+};
+
 export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,7 +72,7 @@ export default function SignIn() {
       await resetPassword(email);
       setMessage('Check your inbox for further instructions.');
     } catch (err) {
-      setError(err.message);
+      setError(getFriendlyErrorMessage(err));
     }
     setLoading(false);
   }
@@ -80,7 +91,7 @@ export default function SignIn() {
       }
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Failed to authenticate');
+      setError(getFriendlyErrorMessage(err));
     }
     setLoading(false);
   }
@@ -92,7 +103,7 @@ export default function SignIn() {
       await loginWithGoogle();
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Failed to authenticate with Google');
+      setError(getFriendlyErrorMessage(err));
     }
     setLoading(false);
   }
