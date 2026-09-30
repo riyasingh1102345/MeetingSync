@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Lock, Eye, EyeOff, Video, ArrowRight, Check, Sparkles, Clock, Users } from 'lucide-react';
+import { updateProfile } from 'firebase/auth';
 
 const C = {
   blue: '#2563EB',
@@ -28,18 +29,6 @@ const features = [
   { icon: <Users size={16} />, color: C.purple, bg: C.purpleLight, text: 'Share insights with your entire team instantly' },
 ];
 
-const getFriendlyErrorMessage = (err) => {
-  const code = err.code || err.message || '';
-  if (code.includes('This email is already registered')) return err.message;
-  if (code.includes('auth/email-already-in-use')) return 'An account with this email already exists. Please log in instead.';
-  if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password') || code.includes('auth/user-not-found')) return 'Invalid email or password.';
-  if (code.includes('auth/weak-password')) return 'Password should be at least 6 characters.';
-  if (code.includes('auth/too-many-requests')) return 'Too many failed attempts. Please try again later.';
-  if (code.includes('auth/popup-closed-by-user')) return 'Google sign-in was cancelled.';
-  if (code.includes('auth/invalid-email')) return 'Please enter a valid email address.';
-  return 'Failed to authenticate. Please try again.';
-};
-
 export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,7 +40,6 @@ export default function SignIn() {
   const [btnHover, setBtnHover] = useState(false);
   const [googleHover, setGoogleHover] = useState(false);
 
-  // Auth specific state
   const { login, signup, loginWithGoogle, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,15 +53,15 @@ export default function SignIn() {
     if (!email) {
       return setError('Please enter your email address first to reset password.');
     }
-    
     try {
       setMessage('');
       setError('');
       setLoading(true);
       await resetPassword(email);
-      setMessage('Check your inbox for further instructions.');
+      setMessage('Password reset email sent! Check your inbox.');
     } catch (err) {
-      setError(getFriendlyErrorMessage(err));
+      console.error('Reset password error:', err.code, err.message);
+      setError('Could not send reset email. Please check your email address.');
     }
     setLoading(false);
   }
@@ -81,33 +69,39 @@ export default function SignIn() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    setMessage('');
     setLoading(true);
 
     try {
       if (isSignUp) {
-        try {
-          await signup(email, password);
-        } catch (signupErr) {
-          if (signupErr.code === 'auth/email-already-in-use') {
-            try {
-              // Try to seamlessly log them in if they already have an account
-              await login(email, password);
-            } catch (loginErr) {
-              if (loginErr.code === 'auth/wrong-password' || loginErr.code === 'auth/invalid-credential') {
-                throw new Error('This email is already registered. If you used Google to sign in before, please click "Continue with Google", or click "Sign In" to enter your password.');
-              }
-              throw loginErr;
-            }
-          } else {
-            throw signupErr;
-          }
+        // Sign up with email/password
+        const userCredential = await signup(email, password);
+        // Set the display name if provided
+        if (name.trim() && userCredential.user) {
+          await updateProfile(userCredential.user, { displayName: name.trim() });
         }
       } else {
+        // Sign in with email/password
         await login(email, password);
       }
       navigate('/dashboard');
     } catch (err) {
-      setError(getFriendlyErrorMessage(err));
+      console.error('Auth error:', err.code, err.message);
+      const code = err.code || '';
+      if (code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Click "Sign In" above to log in, or use "Continue with Google".');
+        setIsSignUp(false);
+      } else if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        setError('Incorrect email or password. Please try again or use "Continue with Google".');
+      } else if (code === 'auth/weak-password') {
+        setError('Password is too weak. Please use at least 6 characters.');
+      } else if (code === 'auth/too-many-requests') {
+        setError('Too many failed attempts. Please wait a moment and try again.');
+      } else if (code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else {
+        setError('Something went wrong. Please try "Continue with Google" instead.');
+      }
     }
     setLoading(false);
   }
@@ -119,7 +113,12 @@ export default function SignIn() {
       await loginWithGoogle();
       navigate('/dashboard');
     } catch (err) {
-      setError(getFriendlyErrorMessage(err));
+      console.error('Google auth error:', err.code, err.message);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Google sign-in was cancelled. Please try again.');
+      } else {
+        setError('Google sign-in failed. Please try again.');
+      }
     }
     setLoading(false);
   }
@@ -155,11 +154,9 @@ export default function SignIn() {
         overflow: 'hidden',
         flexShrink: 0,
       }}>
-        {/* Background glow blobs */}
         <div style={{ position: 'absolute', top: -80, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -60, left: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 1 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Video size={20} color="white" />
@@ -167,7 +164,6 @@ export default function SignIn() {
           <span style={{ fontWeight: 800, fontSize: 20, color: 'white', letterSpacing: '-0.02em' }}>MeetLens AI</span>
         </div>
 
-        {/* Main content */}
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 99, padding: '5px 14px', marginBottom: 28 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399' }} />
@@ -183,7 +179,6 @@ export default function SignIn() {
             MeetLens AI transforms your meeting recordings into searchable, AI-powered insights.
           </p>
 
-          {/* Feature list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {features.map((f, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -198,20 +193,28 @@ export default function SignIn() {
       </div>
 
       {/* ─── RIGHT PANEL ─────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 40px', background: C.bg, overflow: 'hidden' }}>
-        <div style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 40px', background: C.bg, overflow: 'auto' }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
 
-          {/* Heading */}
-          <div style={{ marginBottom: 32 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: C.textPrimary, letterSpacing: '-0.02em', marginBottom: 8 }}>
-              Welcome to MeetLens AI
-            </h1>
-            <p style={{ fontSize: 14.5, color: C.textSecondary, lineHeight: 1.6 }}>
-              Sign in with your Google account to get started for free.
-            </p>
+          {/* Top toggle link */}
+          <div style={{ textAlign: 'right', marginBottom: 20 }}>
+            <span style={{ fontSize: 13.5, color: C.textSecondary }}>
+              {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+              <button onClick={() => { setIsSignUp(!isSignUp); setError(''); setMessage(''); }} style={{ color: C.blue, fontWeight: 700, fontSize: 13.5, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                {isSignUp ? 'Sign In' : 'Sign Up'}
+              </button>
+            </span>
           </div>
 
-          {error && <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '10px 14px', borderRadius: 8, fontSize: 13.5, marginBottom: 20, fontWeight: 500, textAlign: 'left' }}>{error}</div>}
+          {/* Heading */}
+          <div style={{ marginBottom: 20 }}>
+            <h1 style={{ fontSize: 26, fontWeight: 800, color: C.textPrimary, letterSpacing: '-0.02em', marginBottom: 6 }}>
+              {isSignUp ? 'Create your account' : 'Welcome back'}
+            </h1>
+            <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.5 }}>
+              {isSignUp ? 'Sign up to get started with MeetLens AI for free.' : 'Sign in to continue to your MeetLens AI account.'}
+            </p>
+          </div>
 
           {/* Google Button */}
           <button
@@ -221,31 +224,137 @@ export default function SignIn() {
             onMouseEnter={() => setGoogleHover(true)}
             onMouseLeave={() => setGoogleHover(false)}
             style={{
-              width: '100%', padding: '14px 20px', borderRadius: 12, border: `1.5px solid ${googleHover ? '#CBD5E1' : C.border}`,
+              width: '100%', padding: '12px 20px', borderRadius: 10, border: `1.5px solid ${googleHover ? '#CBD5E1' : C.border}`,
               background: googleHover ? C.bgWarm : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 12, fontSize: 15, fontWeight: 700, color: C.textPrimary, cursor: loading ? 'not-allowed' : 'pointer', marginBottom: 28,
-              transition: 'all 0.2s', fontFamily: font, boxShadow: googleHover ? '0 4px 12px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
+              gap: 10, fontSize: 14.5, fontWeight: 600, color: C.textPrimary, cursor: loading ? 'not-allowed' : 'pointer', marginBottom: 20,
+              transition: 'all 0.2s', fontFamily: font, boxShadow: googleHover ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
               opacity: loading ? 0.6 : 1
             }}
           >
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" width={20} height={20} alt="Google" />
-            {loading ? 'Signing in...' : 'Continue with Google'}
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" width={18} height={18} alt="Google" />
+            Continue with Google
           </button>
 
-          {/* Trust badges */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-            {['100% Free to use', 'Unlimited AI meeting summaries', 'Instant transcriptions', 'No credit card required'].map(t => (
-              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 18, height: 18, borderRadius: '50%', background: C.successLight, color: C.success, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Check size={11} strokeWidth={3} />
-                </div>
-                <span style={{ fontSize: 13.5, color: C.textSecondary, fontWeight: 500 }}>{t}</span>
-              </div>
-            ))}
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ flex: 1, height: 1, background: C.border }} />
+            <span style={{ fontSize: 12.5, color: '#94A3B8', fontWeight: 500 }}>or continue with email</span>
+            <div style={{ flex: 1, height: 1, background: C.border }} />
           </div>
 
+          {/* Error / Success Messages */}
+          {error && <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '10px 14px', borderRadius: 8, fontSize: 13.5, marginBottom: 16, fontWeight: 500 }}>{error}</div>}
+          {message && <div style={{ background: '#D1FAE5', color: '#065F46', padding: '10px 14px', borderRadius: 8, fontSize: 13.5, marginBottom: 16, fontWeight: 500 }}>{message}</div>}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* Name field (sign up only) */}
+              {isSignUp && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.textPrimary, marginBottom: 6 }}>Full Name</label>
+                  <div style={{ position: 'relative' }}>
+                    <Users size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: nameFocus ? C.blue : '#94A3B8', transition: 'color 0.2s' }} />
+                    <input
+                      type="text"
+                      placeholder="Riya Singh"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      style={inputStyle(nameFocus)}
+                      onFocus={() => setNameFocus(true)}
+                      onBlur={() => setNameFocus(false)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Email */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.textPrimary, marginBottom: 6 }}>Email address</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: emailFocus ? C.blue : '#94A3B8', transition: 'color 0.2s' }} />
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={inputStyle(emailFocus)}
+                    onFocus={() => setEmailFocus(true)}
+                    onBlur={() => setEmailFocus(false)}
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13.5, fontWeight: 600, color: C.textPrimary }}>Password</label>
+                  {!isSignUp && <a href="#" onClick={handleResetPassword} style={{ fontSize: 12.5, color: C.blue, fontWeight: 600, textDecoration: 'none' }}>Forgot password?</a>}
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <Lock size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: pwFocus ? C.blue : '#94A3B8', transition: 'color 0.2s' }} />
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    placeholder="••••••••••••"
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{ ...inputStyle(pwFocus), paddingRight: 44 }}
+                    onFocus={() => setPwFocus(true)}
+                    onBlur={() => setPwFocus(false)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
+                  >
+                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                onMouseEnter={() => setBtnHover(true)}
+                onMouseLeave={() => setBtnHover(false)}
+                style={{
+                  width: '100%', padding: '13px 24px', borderRadius: 10, border: 'none',
+                  background: btnHover ? C.blueHover : C.blue,
+                  color: 'white', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  fontFamily: font, transition: 'all 0.2s',
+                  boxShadow: btnHover ? '0 6px 20px rgba(37,99,235,0.4)' : '0 4px 12px rgba(37,99,235,0.25)',
+                  transform: btnHover ? 'translateY(-1px)' : 'none',
+                  marginTop: 4,
+                  opacity: loading ? 0.6 : 1
+                }}
+              >
+                {loading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')} {!loading && <ArrowRight size={16} />}
+              </button>
+            </div>
+          </form>
+
+          {/* Trust badges */}
+          {isSignUp && (
+            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {['100% Free to use', 'Unlimited AI meeting summaries', 'Instant transcriptions'].map(t => (
+                <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: C.successLight, color: C.success, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Check size={11} strokeWidth={3} />
+                  </div>
+                  <span style={{ fontSize: 13, color: C.textSecondary, fontWeight: 500 }}>{t}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Footer */}
-          <p style={{ marginTop: 28, fontSize: 12, color: '#94A3B8', lineHeight: 1.6 }}>
+          <p style={{ marginTop: 20, fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 1.6 }}>
             By continuing, you agree to our{' '}
             <a href="#" style={{ color: C.textSecondary, textDecoration: 'none', fontWeight: 600 }}>Terms of Service</a>
             {' '}and{' '}
