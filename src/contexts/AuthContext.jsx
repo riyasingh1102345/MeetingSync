@@ -3,6 +3,7 @@ import { auth, googleProvider } from '../firebase';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
+  signInWithRedirect,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut,
@@ -30,8 +31,16 @@ export function AuthProvider({ children }) {
   }
 
   // Google Login
-  function loginWithGoogle() {
-    return signInWithPopup(auth, googleProvider);
+  async function loginWithGoogle() {
+    try {
+      return await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+        console.warn('Popup failed, falling back to redirect...', error);
+        return await signInWithRedirect(auth, googleProvider);
+      }
+      throw error;
+    }
   }
 
   // Logout
