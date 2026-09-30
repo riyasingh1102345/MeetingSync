@@ -30,6 +30,7 @@ const features = [
 
 const getFriendlyErrorMessage = (err) => {
   const code = err.code || err.message || '';
+  if (code.includes('This email is already registered')) return err.message;
   if (code.includes('auth/email-already-in-use')) return 'An account with this email already exists. Please log in instead.';
   if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password') || code.includes('auth/user-not-found')) return 'Invalid email or password.';
   if (code.includes('auth/weak-password')) return 'Password should be at least 6 characters.';
